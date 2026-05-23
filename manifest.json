@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "com.tikkun.koraim",
+  "name": "תיקון קוראים וסופרים",
+  "version": "1.0.1",
+  "description": "תיקון קוראים אינטראקטיבי עם תמיכה מלאה בהלכות סת\"ם.",
+  "author": "Otzaria Developer",
+  "stability": "stable",
+  "entrypoint": "index.html",
+  "minAppVersion": "0.9.0",
+  "sdkVersion": "1.x",
+  "permissions": [
+    "app.info.read",
+    "settings.read",
+    "ui.feedback",
+    "plugin.storage.read",
+    "plugin.storage.write",
+    "library.books.read",
+    "library.content.read"
+  ],
+  "network": {
+    "enabled": false,
+    "allowlist": []
+  },
+  "contributes": {
+    "toolTab": {
+      "title": "תיקון קוראים",
+      "order": 100,
+      "defaultPinned": true,
+      "iconName": "book_24_regular"
+    }
+  }
+}

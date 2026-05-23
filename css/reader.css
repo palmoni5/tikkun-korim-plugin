@@ -1,0 +1,112 @@
+/* css/reader.css */
+
+.reader-page {
+    display: flex;
+    flex-direction: column;
+    max-width: 1400px;
+    margin: 0 auto;
+    background-color: var(--md-sys-color-surface);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.reader-row {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--md-sys-color-surface-variant);
+    padding-bottom: 8px;
+    min-height: 40px; /* גובה שורה אחיד */
+}
+
+/* טורים בסיסיים */
+.stam-col, .nikud-col {
+    flex: 1;
+    padding: 0 16px;
+    display: flex;
+    align-items: baseline;
+    line-height: 1.6;
+}
+
+.stam-col {
+    font-family: var(--stam-font-family);
+    font-size: var(--stam-font-size);
+    color: var(--stam-font-color);
+}
+
+.nikud-col {
+    font-family: var(--nikud-font-family);
+    font-size: var(--nikud-font-size);
+    color: var(--nikud-font-color);
+    border-right: 2px solid var(--md-sys-color-surface-variant); 
+}
+
+/* בלוקים של טקסט בתוך השורה (כדי לאפשר רווחים ביניהם) */
+.stam-text-block {
+    display: flex;
+    flex: 1;
+    justify-content: space-between; /* פיזור מילים אחיד (Justify) */
+    align-items: baseline;
+}
+
+.nikud-text-block {
+    flex: 1;
+    display: inline-block;
+}
+
+/* עיצוב המילים בסת"ם */
+.stam-word {
+    display: flex;
+    align-items: baseline;
+}
+
+.stam-letter {
+    display: inline-block;
+    transform-origin: right center; 
+    transition: transform 0.2s ease;
+}
+
+/* ---------------------------------
+   הלכות עימוד (פתוחה, סתומה, שירה)
+--------------------------------- */
+
+/* פרשה פתוחה (Petucha) - הטקסט נחתך, אין מתיחות ואין פיזור */
+.layout-petucha .stam-text-block {
+    flex: 0 1 auto; /* גודל לפי הטקסט, לא נמתח לכל השורה */
+    justify-content: flex-start;
+    gap: 0.4em; /* רווח קבוע בין מילים */
+}
+
+/* פרשה סתומה (Setuma) - רווח מדויק של 9 אותיות באמצע */
+.halachic-spacer.spacer-setuma {
+    display: inline-block;
+    width: 9ch; /* 9 תווים של הפונט הנוכחי */
+    flex-shrink: 0;
+}
+
+/* שירת האזינו (Shira Hazinu) - שני טורים עם רווח קבוע ביניהם */
+.layout-shira_hazinu .halachic-spacer.spacer-shira_hazinu {
+    display: inline-block;
+    width: 15%; /* רווח יחסי יפה באמצע */
+    flex-shrink: 0;
+}
+
+/* שירת הים (Shira Yam) - רווח רחב וגמיש יותר בין גושי הטקסט */
+.layout-shira_yam .halachic-spacer.spacer-shira_yam {
+    flex-grow: 1;
+    min-width: 4ch;
+}
+
+/* אותיות מיוחדות */
+.letter-rabati {
+    font-size: 1.6em;
+    font-weight: bold;
+}
+.letter-zeira { font-size: 0.6em; }
+.nun-hafucha { display: inline-block; transform: scaleX(-1); }
+
+/* הסתרת טורים לפי הגדרות מבחן קורא */
+body.hide-stam-column .stam-col { display: none; }
+body.hide-nikud-column .nikud-col { display: none; border-right: none; }

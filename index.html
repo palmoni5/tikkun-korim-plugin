@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תיקון קוראים וסופרים</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/reader.css">
+
+    <!-- תיקוני עיצוב מיוחדים (מירכוז, איקונים, וכפתורי שחזור עמודות) -->
+    <style>
+        /* 1. מירכוז מדויק של הכותרת העליונה */
+        .md-top-app-bar__container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative; /* מאפשר מירכוז אבסולוטי */
+        }
+        .md-top-app-bar__title {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            width: max-content;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        /* 2. היפוך איקון הספר כדי שייפתח מימין לשמאל */
+        #btn-settings svg {
+            transform: scaleX(-1);
+        }
+
+        /* 3. שקיפות הרקע של העמודות כדי לקבל את הרקע המקורי של אוצריא (מצב לילה/יום) */
+        .reader-page {
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        /* 4. הסתרת טורים ללא הרחבת הטור הנותר (שמירה על המבנה) */
+        body.hide-stam-column .stam-col {
+            display: flex !important; /* עוקף את ההסתרה המלאה */
+            visibility: hidden !important; /* מעלים את התוכן אבל שומר על המקום */
+        }
+        body.hide-nikud-column .nikud-col {
+            display: flex !important;
+            visibility: hidden !important;
+            border-right-color: transparent !important;
+        }
+
+        /* 5. עיצוב לכפתורי ההחזרה (מוצפים מעל הטור המוסתר) */
+        .restore-overlay {
+            display: none; /* מוסתר כברירת מחדל */
+            position: fixed;
+            top: 50%;
+            z-index: 100;
+        }
+        
+        /* מיקומים בערך באמצע הטור הרלוונטי */
+        .restore-right {
+            right: 25%;
+            transform: translate(50%, -50%);
+        }
+        .restore-left {
+            left: 25%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* הצגת כפתור ההחזרה כשהטור הרלוונטי מוסתר */
+        body.hide-stam-column .restore-right { display: block; }
+        body.hide-nikud-column .restore-left { display: block; }
+        
+        /* נראות כפתור ההחזרה */
+        .restore-overlay .md-button {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 16px;
+            padding: 0 32px;
+            height: 48px;
+            border-radius: 24px;
+        }
+    </style>
+</head>
+<body>
+    <header class="md-top-app-bar">
+        <div class="md-top-app-bar__container">
+            <!-- אלמנט ריק כדי לאזן את הכפתור שבצד שמאל ולשמור על מירכוז מדויק -->
+            <div style="width: 40px;"></div> 
+            
+            <h1 class="md-top-app-bar__title">תיקון קוראים וסופרים</h1>
+            
+            <div class="md-top-app-bar__actions">
+                <button id="btn-settings" class="md-icon-button" aria-label="הגדרות">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor" d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="navigation-bar">
+        <div class="nav-selectors">
+            <select id="select-book" class="md-select"></select>
+            <select id="select-parasha" class="md-select"></select>
+        </div>
+        <div class="nav-pagination">
+            <button id="btn-prev-col" class="md-button md-button--outlined">עמוד קודם</button>
+            <span id="column-indicator">טוען...</span>
+            <button id="btn-next-col" class="md-button md-button--filled">עמוד הבא</button>
+        </div>
+    </nav>
+
+    <!-- כפתורים צפים להחזרת הטורים במקרה של הסתרה -->
+    <!-- לחיצה עליהם מבצעת פעולת "קליק" וירטואלית על כפתור ההגדרות הרלוונטי! -->
+    <div id="restore-stam-btn" class="restore-overlay restore-right">
+        <button class="md-button md-button--filled" onclick="document.getElementById('setting-hide-stam').click()">הצג טור סת"ם בחזרה</button>
+    </div>
+    <div id="restore-nikud-btn" class="restore-overlay restore-left">
+        <button class="md-button md-button--filled" onclick="document.getElementById('setting-hide-nikud').click()">הצג טור ניקוד בחזרה</button>
+    </div>
+
+    <!-- כאן נכנסים הטורים -->
+    <main id="reader-container" class="reader-wrapper"></main>
+    
+    <!-- חלון הגדרות נשלף -->
+    <dialog id="settings-dialog" class="md-dialog">
+        <h2 class="md-dialog__title">הגדרות תצוגה</h2>
+        <div class="md-dialog__content">
+            <div class="setting-group">
+                <label>גופן סת"ם:</label>
+                <select id="setting-stam-font" class="md-select">
+                    <option value="Ashkenazi">אשכנזי (בית יוסף)</option>
+                    <option value="Sefardi">ספרדי (וועליש)</option>
+                    <option value="Hassidi">קלאסי</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>גופן ניקוד:</label>
+                <select id="setting-nikud-font" class="md-select">
+                    <option value="Standard">סטנדרטי</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>גודל גופן סת"ם (<span id="stam-size-val">28</span>px):</label>
+                <input type="range" id="setting-stam-size" class="md-slider" min="16" max="60" value="28">
+            </div>
+            <div class="setting-group">
+                <label>גודל גופן ניקוד (<span id="nikud-size-val">24</span>px):</label>
+                <input type="range" id="setting-nikud-size" class="md-slider" min="16" max="60" value="24">
+            </div>
+            <div class="setting-group switch-group">
+                <span class="switch-label">הסתר טור סת"ם (מצב קריאה)</span>
+                <label class="md-switch">
+                    <input type="checkbox" id="setting-hide-stam">
+                    <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                </label>
+            </div>
+            <div class="setting-group switch-group">
+                <span class="switch-label">הסתר טור ניקוד (מצב מבחן לקורא)</span>
+                <label class="md-switch">
+                    <input type="checkbox" id="setting-hide-nikud">
+                    <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                </label>
+            </div>
+        </div>
+        <div class="md-dialog__actions">
+            <button id="btn-close-settings" class="md-button md-button--text">סגור</button>
+        </div>
+    </dialog>
+    
+    <script src="js/app.js"></script>
+    <script src="js/reader.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/navigation.js"></script>
+</body>
+</html>
