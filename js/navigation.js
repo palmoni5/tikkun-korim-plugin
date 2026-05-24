@@ -293,7 +293,7 @@ function populateAliyaSelect() {
     aliyot.forEach((a, idx) => {
         const opt = document.createElement('option');
         opt.value = String(idx);
-        opt.textContent = a.aliya; // "עליה א", "עליה ב", ...
+        opt.textContent = ALIYA_DISPLAY_NAMES[a.aliya] || a.aliya; // "ראשון", "שני", ...
         sel.appendChild(opt);
     });
     sel.value = '';
@@ -353,7 +353,11 @@ function scrollToAliya(idx) {
 }
 
 function findWordSequence(tokens, words, fromIdx) {
-    const norm = (s) => s.replace(/[֑-ׇ־]/g, '').replace(/יקוק/g, 'יהוה');
+    // norm: מסיר ניקוד, מקפים, ותווי PUA של זעירא/רבתי (U+E020-E023)
+    const norm = (s) => s
+        .replace(/[֑-ׇ־]/g, '')
+        .replace(/[-]/g, '')
+        .replace(/יקוק/g, 'יהוה');
     const normWords = words.map(norm);
     for (let i = fromIdx; i < tokens.length - words.length; i++) {
         if (tokens[i].type !== 'word') continue;
@@ -408,12 +412,17 @@ function cleanRawText(rawText) {
     // הסרת footnote markers
     rawText = rawText.replace(/<sup[^>]*class="footnote-marker"[^>]*>[\s\S]*?<\/sup>/gi, ' ');
     rawText = rawText.replace(/<i[^>]*class="footnote"[^>]*>[\s\S]*?<\/i>/gi, ' ');
-    // <big>X</big> - שמור תוכן
-    rawText = rawText.replace(/<big[^>]*>([\s\S]*?)<\/big>/g, '$1');
-    // <small>X</small> - אם עברי, סמן כאות זעירא
+    // <big>X</big> - אם עברי, סמן כאות רבתי. תווי PUA: U+E022 התחלה, U+E023 סוף
+    rawText = rawText.replace(/<big[^>]*>([\s\S]*?)<\/big>/g, (m, content) => {
+        if (/[א-ת]/.test(content)) {
+            return '' + content + '';
+        }
+        return content;
+    });
+    // <small>X</small> - אם עברי, סמן כאות זעירא. תווי PUA: U+E020 התחלה, U+E021 סוף
     rawText = rawText.replace(/<small[^>]*>([\s\S]*?)<\/small>/g, (m, content) => {
         if (/[א-ת]/.test(content)) {
-            return '' + content + '';
+            return '' + content + '';
         }
         return content;
     });
@@ -997,7 +1006,7 @@ function populateAliyaSelectQuiet() {
     aliyot.forEach((a, idx) => {
         const opt = document.createElement('option');
         opt.value = String(idx);
-        opt.textContent = a.aliya;
+        opt.textContent = ALIYA_DISPLAY_NAMES[a.aliya] || a.aliya;
         sel.appendChild(opt);
     });
 }

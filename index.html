@@ -128,68 +128,121 @@
     
     <!-- חלון הגדרות נשלף -->
     <dialog id="settings-dialog" class="md-dialog">
-        <h2 class="md-dialog__title">הגדרות תצוגה</h2>
+        <h2 class="md-dialog__title">הגדרות</h2>
+
+        <!-- טאבים -->
+        <div class="settings-tabs">
+            <button type="button" class="settings-tab active" data-tab="display">תצוגה</button>
+            <button type="button" class="settings-tab" data-tab="content">תוכן ומנהגים</button>
+        </div>
+
         <div class="md-dialog__content">
-            <div class="setting-group">
-                <label>גופן סת"ם:</label>
-                <select id="setting-stam-font" class="md-select">
-                    <option value="Ashkenazi">אשכנזי (בית יוסף)</option>
-                    <option value="Sefardi">ספרדי (וועליש)</option>
-                    <option value="Hassidi">קלאסי</option>
-                </select>
+            <!-- === טאב תצוגה === -->
+            <div class="settings-tab-panel" data-panel="display">
+                <div class="setting-group">
+                    <label>גופן סת"ם:</label>
+                    <select id="setting-stam-font" class="md-select">
+                        <optgroup label="גופני סת"ם">
+                            <option value="Klasi">קלאסי</option>
+                            <option value="Ashkenazi">אשכנזי (בית יוסף)</option>
+                            <option value="Sefardi">ספרדי (וועליש)</option>
+                        </optgroup>
+                        <optgroup label="גופני מערכת (אוצריא)">
+                            <option value="System:FrankRuhlCLM">פרנק רוהל</option>
+                            <option value="System:TaameyDavidCLM">טעמי דוד</option>
+                            <option value="System:NotoSerifHebrew">Noto Serif Hebrew</option>
+                            <option value="System:Rubik">רוביק</option>
+                            <option value="System:KeterYG">כתר YG</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>גופן ניקוד:</label>
+                    <select id="setting-nikud-font" class="md-select">
+                        <optgroup label="גופני ניקוד">
+                            <option value="Standard">סטנדרטי</option>
+                        </optgroup>
+                        <optgroup label="גופני מערכת (אוצריא)">
+                            <option value="System:FrankRuhlCLM">פרנק רוהל</option>
+                            <option value="System:TaameyDavidCLM">טעמי דוד</option>
+                            <option value="System:NotoSerifHebrew">Noto Serif Hebrew</option>
+                            <option value="System:Rubik">רוביק</option>
+                            <option value="System:KeterYG">כתר YG</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>גודל גופן סת"ם (<span id="stam-size-val">26</span>px):</label>
+                    <input type="range" id="setting-stam-size" class="md-slider" min="16" max="60" value="26">
+                </div>
+                <div class="setting-group">
+                    <label>גודל גופן ניקוד (<span id="nikud-size-val">22</span>px):</label>
+                    <input type="range" id="setting-nikud-size" class="md-slider" min="16" max="60" value="22">
+                </div>
+                <div class="setting-group">
+                    <label>מרווח בין שורות (<span id="line-spacing-val">1.3</span>):</label>
+                    <input type="range" id="setting-line-spacing" class="md-slider" min="1.0" max="2.4" step="0.1" value="1.3">
+                </div>
+                <div class="setting-group">
+                    <label>זום תצוגה (<span id="zoom-val">100</span>%):</label>
+                    <input type="range" id="setting-zoom" class="md-slider" min="50" max="200" step="5" value="100">
+                </div>
+                <div class="setting-group switch-group">
+                    <span class="switch-label">הסתר טור סת"ם (מצב קריאה)</span>
+                    <label class="md-switch">
+                        <input type="checkbox" id="setting-hide-stam">
+                        <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                    </label>
+                </div>
+                <div class="setting-group switch-group">
+                    <span class="switch-label">הסתר טור ניקוד (מצב מבחן לקורא)</span>
+                    <label class="md-switch">
+                        <input type="checkbox" id="setting-hide-nikud">
+                        <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                    </label>
+                </div>
+                <div class="setting-group switch-group">
+                    <span class="switch-label">החלף סדר טורים (ניקוד בימין)</span>
+                    <label class="md-switch">
+                        <input type="checkbox" id="setting-swap-columns">
+                        <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                    </label>
+                </div>
+                <div class="setting-group switch-group">
+                    <span class="switch-label">הסתר קווי הפרדה בין השורות</span>
+                    <label class="md-switch">
+                        <input type="checkbox" id="setting-hide-row-borders">
+                        <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                    </label>
+                </div>
             </div>
-            <div class="setting-group">
-                <label>גופן ניקוד:</label>
-                <select id="setting-nikud-font" class="md-select">
-                    <option value="Standard">סטנדרטי</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label>גודל גופן סת"ם (<span id="stam-size-val">28</span>px):</label>
-                <input type="range" id="setting-stam-size" class="md-slider" min="16" max="60" value="28">
-            </div>
-            <div class="setting-group">
-                <label>גודל גופן ניקוד (<span id="nikud-size-val">24</span>px):</label>
-                <input type="range" id="setting-nikud-size" class="md-slider" min="16" max="60" value="24">
-            </div>
-            <div class="setting-group switch-group">
-                <span class="switch-label">הסתר טור סת"ם (מצב קריאה)</span>
-                <label class="md-switch">
-                    <input type="checkbox" id="setting-hide-stam">
-                    <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
-                </label>
-            </div>
-            <div class="setting-group switch-group">
-                <span class="switch-label">הסתר טור ניקוד (מצב מבחן לקורא)</span>
-                <label class="md-switch">
-                    <input type="checkbox" id="setting-hide-nikud">
-                    <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
-                </label>
-            </div>
-            <div class="setting-group">
-                <label>זום תצוגה (<span id="zoom-val">100</span>%):</label>
-                <input type="range" id="setting-zoom" class="md-slider" min="50" max="200" step="5" value="100">
-            </div>
-            <div class="setting-group">
-                <label>מרווח בין שורות (<span id="line-spacing-val">1.3</span>):</label>
-                <input type="range" id="setting-line-spacing" class="md-slider" min="1.0" max="2.4" step="0.1" value="1.3">
-            </div>
-            <div class="setting-group">
-                <label>נוסח הפטרה:</label>
-                <select id="setting-nusach" class="md-select">
-                    <option value="ashkenaz">אשכנז</option>
-                    <option value="sephard">ספרד</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label>מנהג לקריאות חגים ומועדים:</label>
-                <select id="setting-nusach-land" class="md-select">
-                    <option value="israel">ארץ ישראל</option>
-                    <option value="diaspora">חוץ לארץ</option>
-                </select>
-            </div>
-            <div class="settings-disclaimer">
-                <strong>הבהרה:</strong> החישובים, החלוקה לעמודים והמרווחים בין המילים מבוצעים על-ידי אלגוריתם אוטומטי, ואינם בהכרח תואמים את כללי הסת"ם המדויקים או את חלוקת הספרים המסורתית. בכל ספק יש להיוועץ בסופר סת"ם.
+
+            <!-- === טאב תוכן ומנהגים === -->
+            <div class="settings-tab-panel" data-panel="content" style="display:none;">
+                <div class="setting-group">
+                    <label>נוסח הפטרה:</label>
+                    <select id="setting-nusach" class="md-select">
+                        <option value="ashkenaz">אשכנז</option>
+                        <option value="sephard">ספרד</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>מנהג לקריאות חגים ומועדים:</label>
+                    <select id="setting-nusach-land" class="md-select">
+                        <option value="israel">ארץ ישראל</option>
+                        <option value="diaspora">חוץ לארץ</option>
+                    </select>
+                </div>
+                <div class="setting-group switch-group">
+                    <span class="switch-label">הסתרת שם השם (יהוה ← יקוק)</span>
+                    <label class="md-switch">
+                        <input type="checkbox" id="setting-hide-divine-name">
+                        <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                    </label>
+                </div>
+                <div class="settings-disclaimer">
+                    <strong>הבהרה:</strong> החישובים, החלוקה לעמודים והמרווחים בין המילים מבוצעים על-ידי אלגוריתם אוטומטי, ואינם בהכרח תואמים את כללי הסת"ם המדויקים או את חלוקת הספרים המסורתית. בכל ספק יש להיוועץ בסופר סת"ם.
+                </div>
             </div>
         </div>
         <div class="md-dialog__actions">

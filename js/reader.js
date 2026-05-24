@@ -139,6 +139,18 @@ function buildMarkerContent(lineObj, prev) {
 }
 
 /**
+ * הסתרת שם השם: י-ה-ו-ה -> י-ק-ו-ק (תוך שמירת ניקוד וטעמים).
+ * הביטוי תופס י + (טעמים/ניקוד) + ה + (טעמים/ניקוד) + ו + (טעמים/ניקוד) + ה.
+ */
+function maskDivineName(text) {
+    if (!text) return text;
+    return text.replace(
+        /י([֑-ׇֿ-]*)ה([֑-ׇֿ-]*)ו([֑-ׇֿ-]*)ה/g,
+        'י$1ק$2ו$3ק'
+    );
+}
+
+/**
  * ציור העמודה ל-HTML
  */
 function renderColumnUI(columnLines) {
@@ -192,6 +204,7 @@ function renderColumnUI(columnLines) {
 
         let isGapNext = false;
 
+        const maskName = !!(typeof AppState !== 'undefined' && AppState.settings && AppState.settings.hideDivineName);
         lineObj.words.forEach(wordObj => {
             if (wordObj.stam === '{GAP}') {
                 // הזרקת אלמנט רווח לסתומה
@@ -209,16 +222,18 @@ function renderColumnUI(columnLines) {
             // תמיכה ב-markers: ... = אות זעירא, ... = אות רבתי
             // אם stam ריק (קרי ולא כתיב) - דילוג על הוספת מילה לטור הסת"ם
             if (wordObj.stam) {
+                const stamText = maskName ? maskDivineName(wordObj.stam) : wordObj.stam;
                 const wordEl = document.createElement('div');
                 wordEl.className = 'stam-word';
                 let inZeira = false;
                 let inRabati = false;
-                for (let i = 0; i < wordObj.stam.length; i++) {
-                    const char = wordObj.stam[i];
-                    if (char === '') { inZeira = true; continue; }
-                    if (char === '') { inZeira = false; continue; }
-                    if (char === '') { inRabati = true; continue; }
-                    if (char === '') { inRabati = false; continue; }
+                for (let i = 0; i < stamText.length; i++) {
+                    const char = stamText[i];
+                    const code = char.charCodeAt(0);
+                    if (code === 0xE020) { inZeira = true; continue; }
+                    if (code === 0xE021) { inZeira = false; continue; }
+                    if (code === 0xE022) { inRabati = true; continue; }
+                    if (code === 0xE023) { inRabati = false; continue; }
                     const charEl = document.createElement('span');
                     charEl.className = 'stam-letter';
                     if (inZeira) charEl.classList.add('letter-zeira');
@@ -232,10 +247,11 @@ function renderColumnUI(columnLines) {
             // --- הרכבת מילת הניקוד ---
             // אם nikud ריק (כתיב ולא קרי) - דילוג על טור הניקוד
             if (wordObj.nikud) {
+                const nikudText = maskName ? maskDivineName(wordObj.nikud) : wordObj.nikud;
                 const nikudWord = document.createElement('span');
-                const nikudHtml = wordObj.nikud
-                    .replace(/([\s\S]*?)/g, '<span class="letter-zeira">$1</span>')
-                    .replace(/([\s\S]*?)/g, '<span class="letter-rabati">$1</span>');
+                const nikudHtml = nikudText
+                    .replace(/\uE020([\s\S]*?)\uE021/g, '<span class="letter-zeira">$1</span>')
+                    .replace(/\uE022([\s\S]*?)\uE023/g, '<span class="letter-rabati">$1</span>');
                 nikudWord.innerHTML = nikudHtml + ' ';
                 nikudCell.appendChild(nikudWord);
             }

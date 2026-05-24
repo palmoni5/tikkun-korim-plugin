@@ -100,7 +100,11 @@ function findParashaStart(tokens, parashaName, startFromIdx = 0) {
         console.warn('No opening words for parasha: ' + parashaName);
         return -1;
     }
-    const norm = (s) => s.replace(/[֑-ׇ־]/g, '').replace(/יקוק/g, 'יהוה');
+    // norm: מסיר ניקוד, טעמים, מקפים ותווי PUA של זעירא/רבתי (U+E020-E023)
+    const norm = (s) => s
+        .replace(/[֑-ׇ־]/g, '')
+        .replace(/[-]/g, '')
+        .replace(/יקוק/g, 'יהוה');
     const normOpening = opening.map(norm);
 
     for (let i = startFromIdx; i < tokens.length - opening.length; i++) {

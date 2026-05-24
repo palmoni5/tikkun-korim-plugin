@@ -2,18 +2,21 @@
 
 const AppState = {
     settings: {
-        stamFont: 'Ashkenazi',
+        stamFont: 'Klasi',
         nikudFont: 'Standard',
-        stamFontSize: 28,
-        nikudFontSize: 24,
+        stamFontSize: 26,
+        nikudFontSize: 22,
         stamColor: '',
         nikudColor: '',
         hideStam: false,
         hideNikud: false,
-        zoom: 100, // אחוזי זום של התצוגה (50-200)
-        nusach: 'ashkenaz', // נוסח הפטרה: 'ashkenaz' / 'sephard'
-        nusachLand: 'israel', // מנהג לקריאות חגים: 'israel' / 'diaspora'
-        lineSpacing: 1.3 // מרווח בין שורות (1.0 - 2.4)
+        zoom: 100,
+        nusach: 'ashkenaz',
+        nusachLand: 'israel',
+        lineSpacing: 1.3,
+        swapColumns: false,    // false=סת"ם בימין, ניקוד בשמאל; true=הפוך
+        hideRowBorders: false, // הסתרת קווי הפרדה בין שורות
+        hideDivineName: false  // הסתרת שם השם (יהוה -> יקוק)
     }
 };
 
@@ -89,8 +92,17 @@ function applySettingsToUI() {
     const root = document.documentElement;
     const { settings } = AppState;
 
-    root.style.setProperty('--font-stam', `'${settings.stamFont}-Stam', serif`);
-    root.style.setProperty('--font-nikud', `'${settings.nikudFont}-Nikud', serif`);
+    // גופן: System:Name -> שם של גופן מערכת. אחרת -> -Stam / -Nikud (גופן מקומי).
+    const resolveFont = (name, suffix) => {
+        if (typeof name !== 'string') return `'${name}${suffix}', serif`;
+        if (name.startsWith('System:')) {
+            const fam = name.slice(7);
+            return `'${fam}', 'David', serif`;
+        }
+        return `'${name}${suffix}', serif`;
+    };
+    root.style.setProperty('--font-stam', resolveFont(settings.stamFont, '-Stam'));
+    root.style.setProperty('--font-nikud', resolveFont(settings.nikudFont, '-Nikud'));
     root.style.setProperty('--stam-font-size', `${settings.stamFontSize}px`);
     root.style.setProperty('--nikud-font-size', `${settings.nikudFontSize}px`);
     root.style.setProperty('--line-spacing', String(settings.lineSpacing || 1.3));
@@ -100,6 +112,8 @@ function applySettingsToUI() {
 
     document.body.classList.toggle('hide-stam-column', settings.hideStam);
     document.body.classList.toggle('hide-nikud-column', settings.hideNikud);
+    document.body.classList.toggle('swap-columns', !!settings.swapColumns);
+    document.body.classList.toggle('hide-row-borders', !!settings.hideRowBorders);
 
     // זום: לא משנה את חישוב השורות, רק את התצוגה.
     // נשתמש ב-CSS zoom (לא transform) - הוא משנה את הגדלים בפועל,

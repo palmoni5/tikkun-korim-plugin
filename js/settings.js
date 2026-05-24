@@ -17,14 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btnClose.addEventListener('click', () => dialog.close());
 
     // סגירה בלחיצה מחוץ לדיאלוג (על ה-backdrop)
+    // backdrop בלחיצה מדווח על dialog עצמו כ-target; כל לחיצה על תוכן פנימי
+    // תהיה ב-target צאצא של dialog.
     dialog.addEventListener('click', (e) => {
-        // לחיצה על ה-dialog עצמו (לא על תוכן פנימי) = לחיצה על ה-backdrop
-        const rect = dialog.getBoundingClientRect();
-        const inside = (
-            e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom
-        );
-        if (!inside) {
+        if (e.target === dialog) {
             dialog.close();
         }
     });
@@ -40,8 +36,25 @@ document.addEventListener('DOMContentLoaded', () => {
         zoom: document.getElementById('setting-zoom'),
         nusach: document.getElementById('setting-nusach'),
         nusachLand: document.getElementById('setting-nusach-land'),
-        lineSpacing: document.getElementById('setting-line-spacing')
+        lineSpacing: document.getElementById('setting-line-spacing'),
+        swapColumns: document.getElementById('setting-swap-columns'),
+        hideRowBorders: document.getElementById('setting-hide-row-borders'),
+        hideDivineName: document.getElementById('setting-hide-divine-name')
     };
+
+    // טאבים
+    const tabs = document.querySelectorAll('.settings-tab');
+    const panels = document.querySelectorAll('.settings-tab-panel');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const which = tab.dataset.tab;
+            panels.forEach(p => {
+                p.style.display = (p.dataset.panel === which) ? '' : 'none';
+            });
+        });
+    });
 
     // פונקציה שמסנכרנת את ערכי ה-DOM מה-State
     function syncUIToState() {
@@ -55,6 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inputs.nusach) inputs.nusach.value = AppState.settings.nusach || 'ashkenaz';
         if (inputs.nusachLand) inputs.nusachLand.value = AppState.settings.nusachLand || 'israel';
         if (inputs.lineSpacing) inputs.lineSpacing.value = AppState.settings.lineSpacing || 1.3;
+        if (inputs.swapColumns) inputs.swapColumns.checked = !!AppState.settings.swapColumns;
+        if (inputs.hideRowBorders) inputs.hideRowBorders.checked = !!AppState.settings.hideRowBorders;
+        if (inputs.hideDivineName) inputs.hideDivineName.checked = !!AppState.settings.hideDivineName;
 
         document.getElementById('stam-size-val').innerText = AppState.settings.stamFontSize;
         document.getElementById('nikud-size-val').innerText = AppState.settings.nikudFontSize;
@@ -128,6 +144,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const v = parseFloat(e.target.value);
             document.getElementById('line-spacing-val').innerText = v.toFixed(1);
             handleSettingChange('lineSpacing', v);
+        });
+    }
+    if (inputs.swapColumns) {
+        inputs.swapColumns.addEventListener('change', (e) => {
+            handleSettingChange('swapColumns', e.target.checked);
+            if (typeof renderCurrentColumn === 'function') {
+                try { renderCurrentColumn(); } catch (_) {}
+            }
+        });
+    }
+    if (inputs.hideRowBorders) {
+        inputs.hideRowBorders.addEventListener('change', (e) => {
+            handleSettingChange('hideRowBorders', e.target.checked);
+        });
+    }
+    if (inputs.hideDivineName) {
+        inputs.hideDivineName.addEventListener('change', (e) => {
+            handleSettingChange('hideDivineName', e.target.checked);
+            if (typeof renderCurrentColumn === 'function') {
+                try { renderCurrentColumn(); } catch (_) {}
+            }
         });
     }
 });

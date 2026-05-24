@@ -182,12 +182,35 @@
 
 /* אותיות מיוחדות */
 .letter-rabati {
-    font-size: 1.6em;
+    font-size: 1.25em;
     font-weight: bold;
 }
-.letter-zeira { font-size: 0.6em; }
+.letter-zeira { font-size: 0.78em; }
 .nun-hafucha { display: inline-block; transform: scaleX(-1); }
 
 /* הסתרת טורים לפי הגדרות מבחן קורא */
 body.hide-stam-column .stam-col { display: none; }
 body.hide-nikud-column .nikud-col { display: none; border-right: none; }
+
+/* החלפת סדר הטורים: ניקוד בימין, סת"ם בשמאל */
+body.swap-columns .reader-row {
+    flex-direction: row-reverse;
+}
+body.swap-columns .nikud-col {
+    border-right: none;
+    border-left: 2px solid color-mix(in srgb, var(--color-outline) 25%, transparent);
+}
+body.swap-columns .stam-col {
+    border-right: none;
+}
+
+/* הסתרת קווי הפרדה בין השורות */
+body.hide-row-borders .reader-row {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+body.hide-row-borders .nikud-col,
+body.hide-row-borders.swap-columns .nikud-col {
+    border-right: none;
+    border-left: none;
+}

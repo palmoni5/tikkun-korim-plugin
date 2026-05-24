@@ -15,6 +15,17 @@ const STRETCHABLE_LETTERS = ['א', 'ד', 'ה', 'ח', 'ל', 'ר', 'ת'];
  * @param {string} rawText - הטקסט שחזר מאוצריא, אחרי הסרת תגיות בסיסית.
  * @returns {Array} מערך של אסימונים: { type: 'word'|'petucha'|'setuma'|'pagebreak_hint', value? }
  */
+// אורך גלוי של מילת סת"ם - מתעלם מתווי PUA U+E020-E023 (סימוני זעירא/רבתי)
+function visibleStamLen(stam) {
+    let n = 0;
+    for (let i = 0; i < stam.length; i++) {
+        const code = stam.charCodeAt(i);
+        if (code < 0xE020 || code > 0xE023) n++;
+    }
+    return n;
+}
+
+
 function tokenizeText(rawText) {
     // החלפת סימוני פרשיות פתוחות/סתומות בסימני מקום ייחודיים.
     // חשוב: לעשות זאת לפני פיצול לפי רווחים, כי {פ}/{ס} עשויים להופיע בלי רווח.
@@ -112,7 +123,7 @@ function computeBalancedMaxChars(tokens, baseMaxChars = 36) {
     let totalChars = 0;
     for (const tok of tokens) {
         if (tok.type === 'word') {
-            const stamLen = tok.value.replace(/[֑-ׇ]/g, '').length;
+            const stamLen = visibleStamLen(tok.value.replace(/[֑-ׇ]/g, ''));
             totalChars += stamLen + 1; // +1 לרווח אחרי המילה
         } else if (tok.type === 'setuma') {
             totalChars += 9;
@@ -221,7 +232,7 @@ function paginatePage(pageObj, maxLines, baseMaxCharsPerLine = 36) {
         }
 
         currentLine.push({ stam: wordStam, nikud: word });
-        charCount += wordStam.length + 1;
+        charCount += visibleStamLen(wordStam) + 1;
 
         // חיתוך שורה אם נגיע למקסימום תווים
         if (charCount >= maxCharsPerLine) {
@@ -392,7 +403,7 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             const ketivStam = ketiv.replace(/[֑-ׇ]/g, '');
             const qereStam = qere.replace(/[֑-ׇ]/g, '');
             if (!ketivStam && !qereStam) continue;
-            const baseLen = (ketivStam || qereStam).length + 1;
+            const baseLen = visibleStamLen(ketivStam || qereStam) + 1;
             // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה.
             // שורה שיוצאת קצרה משמעותית (פחות מ-65% מהמכסה) - מסומנת 'partial'
             // כדי שלא תוצג עם רווחים מוזרים. שורות באורך תקין נשארות 'regular' עם יישור מלא.
@@ -423,7 +434,7 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
         // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה.
         // שורה שיוצאת קצרה משמעותית (פחות מ-65% מהמכסה) - מסומנת 'partial'
         // כדי שלא תוצג עם רווחים מוזרים. שורות באורך תקין נשארות 'regular' עם יישור מלא.
-        const wordLen = wordStam.length + 1;
+        const wordLen = visibleStamLen(wordStam) + 1;
         if (currentLine.length > 0 && charCount + wordLen > maxCharsPerLine) {
             if (lineLayout === 'regular' && charCount < maxCharsPerLine * 0.65) {
                 lineLayout = 'partial';

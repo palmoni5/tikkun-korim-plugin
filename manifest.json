@@ -25,7 +25,7 @@
   },
   "contributes": {
     "toolTab": {
-      "title": "תיקון קוראים",
+      "title": "תיקון קוראים וסופרים",
       "order": 100,
       "defaultPinned": true,
       "iconName": "book_24_regular"
