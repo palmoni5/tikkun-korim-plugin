@@ -318,9 +318,32 @@ function findWordSequence(tokens, words, fromIdx) {
     return -1;
 }
 
+// המרה מגימטריה עברית למספר (תומך בגרשיים: ט"ו, ט"ז וכו')
+function gematriaToNumber(letters) {
+    const values = {
+        'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+        'י': 10, 'כ': 20, 'ל': 30, 'מ': 40, 'נ': 50, 'ס': 60, 'ע': 70, 'פ': 80, 'צ': 90,
+        'ק': 100, 'ר': 200, 'ש': 300, 'ת': 400,
+        'ך': 20, 'ם': 40, 'ן': 50, 'ף': 80, 'ץ': 90
+    };
+    let total = 0;
+    for (const ch of letters) {
+        if (values[ch]) total += values[ch];
+    }
+    return total;
+}
+
 // ניקוי טקסט גולמי - מוציא חלקים שלא רלוונטיים
 function cleanRawText(rawText) {
-    // הסרת כותרות h1/h2 כולל תוכן
+    // לפני הסרת תגיות - חילוץ סימוני פרקים (<h2>פרק X</h2>) ופסוקים ((אות))
+    // והחלפתם ב-markers שלא יפוצלו על-ידי הפיצול הבא.
+    rawText = rawText.replace(/<h2[^>]*>פרק\s+([א-ת"׳]+)\s*<\/h2>/gi, function(m, hLetters) {
+        const cleanLetters = hLetters.replace(/["׳]/g, '');
+        const n = gematriaToNumber(cleanLetters);
+        return n > 0 ? ` CHAPTERMARK${n}MARK ` : ' ';
+    });
+
+    // הסרת שאר כותרות h1/h2/h3 כולל תוכן (אחרי שחילצנו את ה-h2 של הפרקים)
     rawText = rawText.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, ' ');
     // אם הטקסט מתחיל ב-</h..> חלקי (כי ה-bridge חתך באמצע h1)
     const head = rawText.substring(0, 300);
@@ -343,10 +366,47 @@ function cleanRawText(rawText) {
         }
         return content;
     });
+    // טיפול במבני HTML של כתיב/קרי באוצריא (mam-kq classes) - חייב להיות לפני הסרת תגיות.
+    // U+E010 = start, U+E011 = middle (separator), U+E012 = end. כתיב או קרי ריקים אפשריים.
+    // 0) זוג בסדר ההפוך: <span class="mam-kq-k">(כתיב)</span> <span class="mam-kq-q">[קרי]</span>
+    rawText = rawText.replace(
+        /<span[^>]*class="mam-kq-k"[^>]*>\(([^<()]+)\)[־]?<\/span>\s*<span[^>]*class="mam-kq-q"[^>]*>\[([^<\[\]]+)\]<\/span>/g,
+        function(m, ketiv, qere) {
+            var k = ketiv.trim().replace(/\s+/g, '');
+            var q = qere.trim().replace(/\s+/g, '');
+            return '' + k + '' + q + '';
+        }
+    );
+    // 1) זוג כתיב+קרי: <span class="mam-kq-q">[קרי]</span> <span class="mam-kq-k">(כתיב)</span>
+    rawText = rawText.replace(
+        /<span[^>]*class="mam-kq-q"[^>]*>\[([^<\[\]]+)\]<\/span>\s*<span[^>]*class="mam-kq-k"[^>]*>\(([^<()]+)\)[־]?<\/span>/g,
+        function(m, qere, ketiv) {
+            var k = ketiv.trim().replace(/\s+/g, '');
+            var q = qere.trim().replace(/\s+/g, '');
+            return '' + k + '' + q + '';
+        }
+    );
+    // 2) כתיב לבד (כתיב ולא קרי)
+    rawText = rawText.replace(
+        /<span[^>]*class="mam-kq-k"[^>]*>\(([^<()]+)\)[־]?<\/span>/g,
+        function(m, ketiv) {
+            var k = ketiv.trim().replace(/\s+/g, '');
+            return '' + k + '';
+        }
+    );
+    // 3) קרי לבד (קרי ולא כתיב)
+    rawText = rawText.replace(
+        /<span[^>]*class="mam-kq-q"[^>]*>\[([^<\[\]]+)\]<\/span>/g,
+        function(m, qere) {
+            var q = qere.trim().replace(/\s+/g, '');
+            return '' + q + '';
+        }
+    );
     // <br> -> רווח
     rawText = rawText.replace(/<br\s*\/?>/gi, ' ');
     // הסרת שאר תגיות
     rawText = rawText.replace(/<[^>]*>?/gm, ' ');
+
     // פענוח HTML entities
     const decoder = document.createElement('textarea');
     decoder.innerHTML = rawText;
@@ -362,10 +422,22 @@ function cleanRawText(rawText) {
             return '' + k + '' + q + '';
         }
     );
-    // הסרת סימוני פסוקים (א),(ב) - שמירת {פ}/{ס}
+    // הסדר ההפוך באוצריא: [קרי] (כתיב). מבטיחים שהתוכן ארוך מ-1 תו
+    // (כדי לא לתפוס [פ] / [ס] / סימני פסוקים בודדים)
+    rawText = rawText.replace(
+        /\[([^()\[\]]{2,}?)\](?:\s|&nbsp;|&thinsp;)*\(([^()\[\]]{2,}?)\)/g,
+        function(m, qere, ketiv) {
+            var k = ketiv.trim().replace(/\s+/g, '');
+            var q = qere.trim().replace(/\s+/g, '');
+            return '' + k + '' + q + '';
+        }
+    );
+    // המרת סימוני פסוקים (א),(ב) ל-markers (שמירת {פ}/{ס})
     rawText = rawText.replace(/\(([א-ת"׳]+)\)/g, function(match, inner) {
         if (inner === 'פ' || inner === 'ס') return match;
-        return ' ';
+        const cleanLetters = inner.replace(/["׳]/g, '');
+        const n = gematriaToNumber(cleanLetters);
+        return n > 0 ? ` VERSEMARK${n}MARK ` : ' ';
     });
     // המרת מקף עברי לרווח
     rawText = rawText.replace(/־/g, ' ');
@@ -438,6 +510,9 @@ async function loadAndProcessAll(methodId) {
     const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
     console.log(`[tikkun] lines: ${allLines.length}, pages: ~${Math.ceil(allLines.length / maxLines)}`);
 
+    // הצמדת שם העליה לכל שורה שמתחילה בה עליה (כדי שיוצג בעמודה האמצעית)
+    annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx);
+
     const pages = [];
     for (let i = 0; i < allLines.length; i += maxLines) {
         pages.push({
@@ -452,6 +527,58 @@ async function loadAndProcessAll(methodId) {
 
     console.log(`[tikkun] done in ${Math.round((performance.now() - t0) / 1000)}s`);
     return processedAll;
+}
+
+// המרת "עליה א" -> "ראשון" וכו' לתצוגה הקריאה
+const ALIYA_DISPLAY_NAMES = {
+    'עליה א': 'ראשון',
+    'עליה ב': 'שני',
+    'עליה ג': 'שלישי',
+    'עליה ד': 'רביעי',
+    'עליה ה': 'חמישי',
+    'עליה ו': 'ששי',
+    'עליה ז': 'שביעי'
+};
+
+// עוברים על כל הפרשיות בתורה, ומוצאים את השורה שבה מתחילה כל עליה
+function annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
+    for (const bookId of BOOKS_ORDER) {
+        const bookName = TORAH_STRUCTURE[bookId].name;
+        const parashot = TORAH_STRUCTURE[bookId].parashot;
+        const bookStart = bookStartTokenIdx[bookId] || 0;
+
+        let searchFrom = bookStart;
+        for (const parashaName of parashot) {
+            const normalized = normalizeParashaName(parashaName);
+            const parashaTokenIdx = window.findParashaStart
+                ? window.findParashaStart(tokens, normalized, searchFrom)
+                : -1;
+            const parashaStart = parashaTokenIdx >= 0 ? parashaTokenIdx : searchFrom;
+
+            const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+            let aliyaSearchFrom = parashaStart;
+            for (const a of aliyot) {
+                const aliyaTokenIdx = findWordSequence(tokens, a.words, aliyaSearchFrom);
+                if (aliyaTokenIdx < 0) continue;
+                // מצא את השורה המתאימה לטוקן זה
+                for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
+                    const thisStart = allLines[lineIdx].startTokenIdx;
+                    const nextStart = (lineIdx + 1 < allLines.length)
+                        ? allLines[lineIdx + 1].startTokenIdx
+                        : Infinity;
+                    if (thisStart >= 0 && aliyaTokenIdx >= thisStart && aliyaTokenIdx < nextStart) {
+                        // אם השורה כבר שויכה לעליה אחרת - אל תדרוס
+                        if (!allLines[lineIdx].aliyaName) {
+                            allLines[lineIdx].aliyaName = ALIYA_DISPLAY_NAMES[a.aliya] || a.aliya;
+                        }
+                        break;
+                    }
+                }
+                aliyaSearchFrom = aliyaTokenIdx + 1;
+            }
+            searchFrom = parashaStart + 1;
+        }
+    }
 }
 
 // === נביאים וכתובים ===
@@ -497,51 +624,18 @@ async function loadAndDisplayTanachBook() {
             }
         }
 
-        // לפני ניקוי, נחלץ את מיקומי הפרקים מתוך <h2>פרק X</h2>
-        const chapterPositions = [];
-        const h2Regex = /<h2[^>]*>פרק\s+([א-ת"׳]+)<\/h2>/g;
-        let m;
-        while ((m = h2Regex.exec(rawText)) !== null) {
-            chapterPositions.push({ rawIdx: m.index, label: m[1] });
-        }
-
-        // לפצל את הטקסט לפי הפרקים, ולסמן כל פרק ב-marker מיוחד
-        // כדי שנוכל אחר כך לזהות תחילת כל פרק ב-tokens
-        let processedRaw = '';
-        let lastEnd = 0;
-        chapterPositions.forEach((cp, idx) => {
-            processedRaw += rawText.substring(lastEnd, cp.rawIdx);
-            processedRaw += ` CHAPTERMARK${idx + 1}MARK `;
-            // דילוג על תגית h2 עצמה
-            const endH2 = rawText.indexOf('</h2>', cp.rawIdx);
-            lastEnd = endH2 + 5;
-        });
-        processedRaw += rawText.substring(lastEnd);
-
-        // ניקוי
-        const cleaned = cleanRawText(processedRaw);
+        // ניקוי - cleanRawText כבר ממיר h2 ל-CHAPTERMARK ו-(אות) ל-VERSEMARK
+        const cleaned = cleanRawText(rawText);
         const tokens = window.PageLayoutEngine.tokenizeText(cleaned);
         const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
 
-        // איתור באיזו שורה מתחיל כל פרק - לפי ה-CHAPTERMARK
+        // איתור באיזו שורה מתחיל כל פרק - לפי firstChapterNum של השורות
         const chapterToLineIdx = {};
-        for (let i = 0; i < tokens.length; i++) {
-            const t = tokens[i];
-            if (t.type === 'word' && /^CHAPTERMARK\d+MARK$/.test(t.value)) {
-                const num = parseInt(t.value.match(/\d+/)[0]);
-                // מצא את השורה הבאה אחרי הטוקן הזה
-                for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
-                    if (allLines[lineIdx].startTokenIdx > i) {
-                        chapterToLineIdx[num] = lineIdx;
-                        break;
-                    }
-                }
+        for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
+            const ch = allLines[lineIdx].firstChapterNum;
+            if (ch != null && chapterToLineIdx[ch] === undefined) {
+                chapterToLineIdx[ch] = lineIdx;
             }
-        }
-
-        // הסרת הטוקנים של ה-CHAPTERMARK מהשורות עצמן (בלי לפגוע ב-startTokenIdx)
-        for (const line of allLines) {
-            line.words = line.words.filter(w => !/^CHAPTERMARK\d+MARK$/.test(w.stam));
         }
 
         processed = { rawText, tokens, allLines, chapterToLineIdx };
@@ -657,17 +751,18 @@ function renderCurrentColumn(scrollToLine = 0) {
         `עמוד ${currentNavState.currentColumnIndex + 1} מתוך ${paginatedColumns.length}`;
 
     // גלילה: לתחילת העמוד או לשורה ספציפית (תחילת פרשה)
+    // ה-body הוגדר overflow:hidden, אז הגלילה היא בתוך ה-container עצמו.
     const container = document.getElementById('reader-container');
     if (scrollToLine > 0) {
         const rows = container.querySelectorAll('.reader-row');
         if (rows[scrollToLine]) {
-            rows[scrollToLine].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const offsetWithinContainer = rows[scrollToLine].offsetTop - container.offsetTop;
+            container.scrollTo({ top: offsetWithinContainer, behavior: 'smooth' });
             return;
         }
     }
-    // ברירת מחדל: גלילה לתחילת העמוד
-    container.scrollIntoView({ behavior: 'auto', block: 'start' });
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    // ברירת מחדל: גלילה לתחילת העמוד החדש
+    container.scrollTop = 0;
 }
 
 document.getElementById('btn-next-col').addEventListener('click', () => {

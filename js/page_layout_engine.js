@@ -24,6 +24,7 @@ function tokenizeText(rawText) {
         .replace(/\(ס\)|\[ס\]|\{ס\}/g, ' SETUMA ')
         .replace(/BOOKBREAKMARKER/g, ' BOOKBREAK ')
         .replace(/CHAPTERMARK(\d+)MARK/g, ' CHAPTER$1 ')
+        .replace(/VERSEMARK(\d+)MARK/g, ' VERSE$1 ')
         .replace(/\s+/g, ' ')
         .trim();
 
@@ -40,6 +41,9 @@ function tokenizeText(rawText) {
         } else if (/^CHAPTER(\d+)$/.test(part)) {
             const num = parseInt(part.replace(/^CHAPTER/, ''));
             tokens.push({ type: 'chapter_break', chapterNum: num });
+        } else if (/^VERSE(\d+)$/.test(part)) {
+            const num = parseInt(part.replace(/^VERSE/, ''));
+            tokens.push({ type: 'verse_break', verseNum: num });
         } else {
             tokens.push({ type: 'word', value: part });
         }
@@ -248,19 +252,41 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
     let currentLineStartTokenIdx = -1; // הטוקן הראשון של השורה הנוכחית
     let charCount = 0;
     let lineLayout = 'regular';
+    // markers ממתינים - יוצמדו לשורה הבאה שתכלול מילה
+    let pendingChapterNum = null;
+    let pendingVerseNum = null;
+    // markers של השורה הנוכחית
+    let currentLineFirstVerse = null;
+    let currentLineFirstChapter = null;
 
     const flushLine = () => {
         if (currentLine.length > 0) {
             lines.push({
                 words: currentLine,
                 layout: lineLayout,
-                startTokenIdx: currentLineStartTokenIdx
+                startTokenIdx: currentLineStartTokenIdx,
+                firstVerseNum: currentLineFirstVerse,
+                firstChapterNum: currentLineFirstChapter
             });
         }
         currentLine = [];
         currentLineStartTokenIdx = -1;
         charCount = 0;
         lineLayout = 'regular';
+        currentLineFirstVerse = null;
+        currentLineFirstChapter = null;
+    };
+
+    // לפני הוספת מילה ראשונה לשורה - מצמיד את ה-pending markers לשורה הנוכחית
+    const consumePendingMarkers = () => {
+        if (pendingChapterNum !== null && currentLineFirstChapter === null) {
+            currentLineFirstChapter = pendingChapterNum;
+        }
+        if (pendingVerseNum !== null && currentLineFirstVerse === null) {
+            currentLineFirstVerse = pendingVerseNum;
+        }
+        pendingChapterNum = null;
+        pendingVerseNum = null;
     };
 
     for (let i = 0; i < tokens.length; i++) {
@@ -289,8 +315,16 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
         }
 
         if (tok.type === 'chapter_break') {
-            // מעבר בין פרקים בנ"ך - לא יוצר שורה חדשה, רק נקודת ייחוס לניווט.
-            // הוא נשמר ב-tokens, וה-mapping ל-line נעשה ב-navigation.js לפי startTokenIdx.
+            // מעבר פרק - יוצמד לשורה הבאה שתכלול מילה
+            pendingChapterNum = tok.chapterNum;
+            // פרק חדש מתחיל לרוב בפסוק א - אם אין pendingVerseNum, נגדיר ידנית
+            if (pendingVerseNum === null) pendingVerseNum = 1;
+            continue;
+        }
+
+        if (tok.type === 'verse_break') {
+            // מעבר פסוק - יוצמד לשורה הבאה שתכלול מילה
+            pendingVerseNum = tok.verseNum;
             continue;
         }
 
@@ -323,15 +357,21 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
         const word = tok.value;
 
         // טיפול ב-כתיב/קרי: ketivqere
-        const kqMatch = word.match(/([\s\S]+?)([\s\S]+?)/);
+        const kqMatch = word.match(/([\s\S]*?)([\s\S]*?)/);
         if (kqMatch) {
             const ketiv = kqMatch[1];
             const qere = kqMatch[2];
             const ketivStam = ketiv.replace(/[֑-ׇ]/g, '');
+            const qereStam = qere.replace(/[֑-ׇ]/g, '');
+            if (!ketivStam && !qereStam) continue;
             if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;
-            // stam = כתיב (ללא ניקוד), nikud = קרי (עם ניקוד)
+            if (typeof consumePendingMarkers === 'function') consumePendingMarkers();
+            // sTam = רק כתיב (אם יש), nikud = רק קרי (אם יש).
+            // אם stam ריק -> ה-renderer ידלג על stam של המילה הזו (קרי ולא כתיב).
+            // אם nikud ריק -> ה-renderer ידלג על nikud (כתיב ולא קרי).
             currentLine.push({ stam: ketivStam, nikud: qere });
-            charCount += ketivStam.length + 1;
+            const baseLen = (ketivStam || qereStam).length;
+            charCount += baseLen + 1;
             if (charCount >= maxCharsPerLine) {
                 flushLine();
             }
@@ -350,6 +390,7 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
         }
 
         if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;
+        consumePendingMarkers();
         currentLine.push({ stam: wordStam, nikud: word });
         charCount += wordStam.length + 1;
         if (charCount >= maxCharsPerLine) {

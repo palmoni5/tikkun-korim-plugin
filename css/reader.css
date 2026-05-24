@@ -19,7 +19,7 @@
     border-bottom: 1px solid var(--md-sys-color-surface-variant);
     padding-bottom: 8px;
     min-height: 40px; /* גובה שורה אחיד */
-    gap: 48px; /* רווח בין טור הסת"ם לטור הניקוד */
+    gap: 16px; /* רווח בין הטורים והעמודה האמצעית */
 }
 
 /* טורים בסיסיים - יישור לשני הכיוונים (כמו justify) */
@@ -31,6 +31,45 @@
     line-height: 1.6;
     justify-content: space-between; /* יישור לשני הכיוונים - כמו בכתב סת"ם */
     gap: 0.15em; /* רווח מינימלי בין מילים */
+}
+
+/* עמודה אמצעית - מספרי פרק/פסוק ושמות עליות */
+.markers-col {
+    flex: 0 0 70px; /* רוחב קבוע יחסית קטן */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-family: var(--nikud-font-family);
+    line-height: 1.2;
+    color: var(--md-sys-color-on-surface-variant);
+    user-select: none;
+}
+
+.marker-ref {
+    font-size: 0.85em;
+    text-align: center;
+    direction: rtl;
+    white-space: nowrap;
+}
+
+.marker-ref-chapter {
+    font-weight: bold;
+    color: var(--md-sys-color-on-surface);
+}
+
+.marker-ref-verse {
+    opacity: 0.85;
+}
+
+.marker-aliya {
+    font-size: 0.85em;
+    font-weight: bold;
+    color: var(--md-sys-color-primary);
+    text-align: center;
+    white-space: nowrap;
+    direction: rtl;
 }
 
 /* בשורה לפני פרשה פתוחה - אין יישור, מילים בתחילת השורה (RTL = ימין) */

@@ -83,11 +83,54 @@ function dynamicPaginate(rawText) {
 }
 
 /**
+ * המרה מספר עברי לגימטריה (לתצוגת מספרי פסוקים/פרקים)
+ */
+function numToHebrewGematria(n) {
+    if (!n || n <= 0) return '';
+    const map = ['','א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב','יג','יד','טו','טז','יז','יח','יט','כ',
+        'כא','כב','כג','כד','כה','כו','כז','כח','כט','ל','לא','לב','לג','לד','לה','לו','לז','לח','לט','מ',
+        'מא','מב','מג','מד','מה','מו','מז','מח','מט','נ'];
+    if (n <= 50) return map[n];
+    if (n < 100) return 'נ' + (n - 50 > 0 ? map[n - 50] : '');
+    if (n < 150) return 'ק' + (n - 100 > 0 ? map[n - 100] : '');
+    return String(n);
+}
+
+/**
+ * בניית התוכן של עמודת המסמנים האמצעית עבור שורה
+ */
+function buildMarkerContent(lineObj) {
+    const parts = [];
+    // עליה: בלוק עליון
+    if (lineObj.aliyaName) {
+        const aliyaEl = document.createElement('div');
+        aliyaEl.className = 'marker-aliya';
+        aliyaEl.textContent = lineObj.aliyaName;
+        parts.push(aliyaEl);
+    }
+    // פרק:פסוק (תחילת פרק) או פסוק בלבד
+    if (lineObj.firstChapterNum != null) {
+        const refEl = document.createElement('div');
+        refEl.className = 'marker-ref marker-ref-chapter';
+        const ch = numToHebrewGematria(lineObj.firstChapterNum);
+        const vs = numToHebrewGematria(lineObj.firstVerseNum || 1);
+        refEl.textContent = `${ch}:${vs}`;
+        parts.push(refEl);
+    } else if (lineObj.firstVerseNum != null) {
+        const vsEl = document.createElement('div');
+        vsEl.className = 'marker-ref marker-ref-verse';
+        vsEl.textContent = numToHebrewGematria(lineObj.firstVerseNum);
+        parts.push(vsEl);
+    }
+    return parts;
+}
+
+/**
  * ציור העמודה ל-HTML
  */
 function renderColumnUI(columnLines) {
     const container = document.getElementById('reader-container');
-    container.innerHTML = ''; 
+    container.innerHTML = '';
 
     const page = document.createElement('div');
     page.className = 'reader-page';
@@ -98,7 +141,13 @@ function renderColumnUI(columnLines) {
 
         const stamCell = document.createElement('div');
         stamCell.className = 'stam-col';
-        
+
+        // עמודת המסמנים האמצעית - מספרי פרק/פסוק ושם עליה
+        const markersCell = document.createElement('div');
+        markersCell.className = 'markers-col';
+        const markerParts = buildMarkerContent(lineObj);
+        markerParts.forEach(p => markersCell.appendChild(p));
+
         const nikudCell = document.createElement('div');
         nikudCell.className = 'nikud-col';
 
@@ -119,37 +168,42 @@ function renderColumnUI(columnLines) {
 
             // --- הרכבת מילת סת"ם עם אותיות לחיתוך/מתיחה ---
             // תמיכה ב-markers: ... = אות זעירא, ... = אות רבתי
-            const wordEl = document.createElement('div');
-            wordEl.className = 'stam-word';
-
-            let inZeira = false;
-            let inRabati = false;
-            for (let i = 0; i < wordObj.stam.length; i++) {
-                const char = wordObj.stam[i];
-                if (char === '') { inZeira = true; continue; }
-                if (char === '') { inZeira = false; continue; }
-                if (char === '') { inRabati = true; continue; }
-                if (char === '') { inRabati = false; continue; }
-                const charEl = document.createElement('span');
-                charEl.className = 'stam-letter';
-                if (inZeira) charEl.classList.add('letter-zeira');
-                if (inRabati) charEl.classList.add('letter-rabati');
-                charEl.innerText = char;
-                wordEl.appendChild(charEl);
+            // אם stam ריק (קרי ולא כתיב) - דילוג על הוספת מילה לטור הסת"ם
+            if (wordObj.stam) {
+                const wordEl = document.createElement('div');
+                wordEl.className = 'stam-word';
+                let inZeira = false;
+                let inRabati = false;
+                for (let i = 0; i < wordObj.stam.length; i++) {
+                    const char = wordObj.stam[i];
+                    if (char === '') { inZeira = true; continue; }
+                    if (char === '') { inZeira = false; continue; }
+                    if (char === '') { inRabati = true; continue; }
+                    if (char === '') { inRabati = false; continue; }
+                    const charEl = document.createElement('span');
+                    charEl.className = 'stam-letter';
+                    if (inZeira) charEl.classList.add('letter-zeira');
+                    if (inRabati) charEl.classList.add('letter-rabati');
+                    charEl.innerText = char;
+                    wordEl.appendChild(charEl);
+                }
+                stamCell.appendChild(wordEl);
             }
-            stamCell.appendChild(wordEl);
 
             // --- הרכבת מילת הניקוד ---
-            const nikudWord = document.createElement('span');
-            // ניקוי markers מהניקוד והחלפתם ב-span עם class מתאים
-            const nikudHtml = wordObj.nikud
-                .replace(/([\s\S]*?)/g, '<span class="letter-zeira">$1</span>')
-                .replace(/([\s\S]*?)/g, '<span class="letter-rabati">$1</span>');
-            nikudWord.innerHTML = nikudHtml + ' ';
-            nikudCell.appendChild(nikudWord);
+            // אם nikud ריק (כתיב ולא קרי) - דילוג על טור הניקוד
+            if (wordObj.nikud) {
+                const nikudWord = document.createElement('span');
+                const nikudHtml = wordObj.nikud
+                    .replace(/([\s\S]*?)/g, '<span class="letter-zeira">$1</span>')
+                    .replace(/([\s\S]*?)/g, '<span class="letter-rabati">$1</span>');
+                nikudWord.innerHTML = nikudHtml + ' ';
+                nikudCell.appendChild(nikudWord);
+            }
         });
 
         row.appendChild(stamCell);
+        row.appendChild(markersCell);
         row.appendChild(nikudCell);
         page.appendChild(row);
     });
