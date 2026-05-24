@@ -192,6 +192,69 @@
 body.hide-stam-column .stam-col { display: none; }
 body.hide-nikud-column .nikud-col { display: none; border-right: none; }
 
+/* ============================================================
+   הדפסה - מסתיר רק את ה-UI שלא רלוונטי. ה-layout נשאר כמו במסך.
+   ברירת מחדל: דף לרוחב (landscape) - מאפשר יותר רוחב לכל שורה.
+   ============================================================ */
+@page {
+    size: landscape;
+    margin: 1cm;
+}
+
+@media print {
+    .md-top-app-bar,
+    .navigation-bar,
+    .restore-overlay,
+    #settings-dialog { display: none !important; }
+
+    /* מאפשר תוכן זורם על פני כמה דפים */
+    html, body {
+        overflow: visible !important;
+        height: auto !important;
+        display: block !important;
+        direction: rtl !important;
+    }
+    .reader-wrapper {
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    /* שמירה על flex layout כמו במסך, רק עם תיקונים שיתאימו להדפסה. */
+    .reader-page {
+        max-width: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    /* min-width: 0 קריטי - בלעדיו flex children לא מצטמצמים והעמודות חורגות */
+    .stam-col, .nikud-col {
+        min-width: 0 !important;
+        flex: 1 1 0 !important;
+    }
+    /* stam-word נשאר flex פנימי לאותיות. nowrap מבטיח שלא יחתוך מילה. */
+    .stam-word {
+        white-space: nowrap;
+    }
+
+    /* הגבלת גודל גופן ב-print: עד 20pt בשני הטורים */
+    .stam-col {
+        font-size: min(var(--stam-font-size), 20pt) !important;
+    }
+    .nikud-col {
+        font-size: min(var(--nikud-font-size), 20pt) !important;
+    }
+
+    /* בעת hide-stam או hide-nikud - להסתיר את העמודה לחלוטין */
+    body.hide-stam-column .stam-col,
+    body.hide-nikud-column .nikud-col { display: none !important; }
+
+    /* שורות לא יתחתכו באמצע דף */
+    .reader-row {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+}
+
 /* החלפת סדר הטורים: ניקוד בימין, סת"ם בשמאל */
 body.swap-columns .reader-row {
     flex-direction: row-reverse;

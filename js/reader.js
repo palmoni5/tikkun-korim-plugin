@@ -242,6 +242,9 @@ function renderColumnUI(columnLines) {
                     wordEl.appendChild(charEl);
                 }
                 stamCell.appendChild(wordEl);
+                // text node עם רווח בין מילים - חיוני להדפסה (table-cell ללא flex gap)
+                // ובתצוגה רגילה (flex) זה רק anonymous flex item ריק שלא מפריע.
+                stamCell.appendChild(document.createTextNode(' '));
             }
 
             // --- הרכבת מילת הניקוד ---
