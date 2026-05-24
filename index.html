@@ -103,8 +103,11 @@
 
     <nav class="navigation-bar">
         <div class="nav-selectors">
+            <select id="select-section" class="md-select" title="חלק התנ&quot;ך"></select>
+            <select id="select-method" class="md-select" title="שיטת חלוקת הספר תורה"></select>
             <select id="select-book" class="md-select"></select>
             <select id="select-parasha" class="md-select"></select>
+            <select id="select-chapter" class="md-select" style="display:none;" title="פרק"></select>
         </div>
         <div class="nav-pagination">
             <button id="btn-prev-col" class="md-button md-button--outlined">עמוד קודם</button>
@@ -165,12 +168,21 @@
                     <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
                 </label>
             </div>
+            <div class="setting-group">
+                <label>זום תצוגה (<span id="zoom-val">100</span>%):</label>
+                <input type="range" id="setting-zoom" class="md-slider" min="50" max="200" step="5" value="100">
+            </div>
         </div>
         <div class="md-dialog__actions">
             <button id="btn-close-settings" class="md-button md-button--text">סגור</button>
         </div>
     </dialog>
     
+    <script src="js/torah_layouts.js"></script>
+    <script src="js/special_layouts.js"></script>
+    <script src="js/parasha_index.js"></script>
+    <script src="js/tanach_structure.js"></script>
+    <script src="js/page_layout_engine.js"></script>
     <script src="js/app.js"></script>
     <script src="js/reader.js"></script>
     <script src="js/settings.js"></script>

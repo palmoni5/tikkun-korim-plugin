@@ -2,7 +2,6 @@
 
 const MAX_CHARS_PER_LINE = 36;
 const LINES_PER_COLUMN = 42;
-const STRETCHABLE_LETTERS = ['א', 'ד', 'ה', 'ח', 'ל', 'ר', 'ת'];
 
 /**
  * חותך את הטקסט הגולמי של אוצריא ל-42 שורות, ומזהה פתוחות/סתומות.
@@ -11,11 +10,12 @@ function dynamicPaginate(rawText) {
     const columns = [];
     let currentColumn = [];
     
-    // ניקוי סימני פיסוק זרים והכנה, פיצול לפי מילים. 
-    // נתייחס ל-(פ) ול-[פ] כסימן לפתוחה, ול-(ס)/[ס] כסתומה
+    // ניקוי סימני פיסוק זרים והכנה, פיצול לפי מילים.
+    // נתייחס ל-(פ)/[פ]/{פ} כסימן לפתוחה, ול-(ס)/[ס]/{ס} כסתומה
+    // (בטקסט מכון ממרא של אוצריא הסימן מופיע כסוגריים מסולסלים)
     const words = rawText.replace(/[\n\r]/g, ' ')
-                         .replace(/\(פ\)|\[פ\]/g, ' {PETUCHA} ')
-                         .replace(/\(ס\)|\[ס\]/g, ' {SETUMA} ')
+                         .replace(/\(פ\)|\[פ\]|\{פ\}/g, ' {PETUCHA} ')
+                         .replace(/\(ס\)|\[ס\]|\{ס\}/g, ' {SETUMA} ')
                          .split(/\s+/)
                          .filter(w => w.trim().length > 0);
                          
@@ -118,25 +118,34 @@ function renderColumnUI(columnLines) {
             }
 
             // --- הרכבת מילת סת"ם עם אותיות לחיתוך/מתיחה ---
+            // תמיכה ב-markers: ... = אות זעירא, ... = אות רבתי
             const wordEl = document.createElement('div');
             wordEl.className = 'stam-word';
 
+            let inZeira = false;
+            let inRabati = false;
             for (let i = 0; i < wordObj.stam.length; i++) {
                 const char = wordObj.stam[i];
+                if (char === '') { inZeira = true; continue; }
+                if (char === '') { inZeira = false; continue; }
+                if (char === '') { inRabati = true; continue; }
+                if (char === '') { inRabati = false; continue; }
                 const charEl = document.createElement('span');
                 charEl.className = 'stam-letter';
+                if (inZeira) charEl.classList.add('letter-zeira');
+                if (inRabati) charEl.classList.add('letter-rabati');
                 charEl.innerText = char;
-
-                if (STRETCHABLE_LETTERS.includes(char)) {
-                    charEl.classList.add('stretch-candidate');
-                }
                 wordEl.appendChild(charEl);
             }
             stamCell.appendChild(wordEl);
 
             // --- הרכבת מילת הניקוד ---
             const nikudWord = document.createElement('span');
-            nikudWord.innerText = wordObj.nikud + " ";
+            // ניקוי markers מהניקוד והחלפתם ב-span עם class מתאים
+            const nikudHtml = wordObj.nikud
+                .replace(/([\s\S]*?)/g, '<span class="letter-zeira">$1</span>')
+                .replace(/([\s\S]*?)/g, '<span class="letter-rabati">$1</span>');
+            nikudWord.innerHTML = nikudHtml + ' ';
             nikudCell.appendChild(nikudWord);
         });
 
@@ -146,40 +155,4 @@ function renderColumnUI(columnLines) {
     });
 
     container.appendChild(page);
-    setTimeout(() => applyStamJustification(page), 0);
-}
-
-/**
- * יישור בלוק ומתיחת אותיות
- */
-function applyStamJustification(pageElement) {
-    const rows = pageElement.querySelectorAll('.reader-row:not(.layout-petucha)');
-    
-    rows.forEach(row => {
-        const stamCell = row.querySelector('.stam-col');
-        const words = Array.from(stamCell.querySelectorAll('.stam-word'));
-        if(words.length === 0) return;
-
-        let totalWordsWidth = words.reduce((acc, word) => acc + word.offsetWidth, 0);
-        // אם יש רווח של פרשה סתומה, נחסר אותו מרוחב החישוב
-        const gap = stamCell.querySelector('.spacer-setuma');
-        if (gap) totalWordsWidth += gap.offsetWidth;
-
-        const cellWidth = stamCell.offsetWidth - 32; 
-        const remainingSpace = cellWidth - totalWordsWidth;
-        const gapsCount = words.length - 1;
-        const averageGap = gapsCount > 0 ? remainingSpace / gapsCount : 0;
-
-        if (averageGap > 20) { 
-            const candidates = stamCell.querySelectorAll('.stretch-candidate');
-            if (candidates.length > 0) {
-                const scaleFactor = 1.7; 
-                const candidatesToStretch = Array.from(candidates).slice(-3); 
-                candidatesToStretch.forEach(el => {
-                    el.style.transform = `scaleX(${scaleFactor})`;
-                    el.style.paddingLeft = '3px'; 
-                });
-            }
-        }
-    });
 }

@@ -5,10 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSettings = document.getElementById('btn-settings');
     const btnClose = document.getElementById('btn-close-settings');
 
-    // פתיחה וסגירה של הדיאלוג
+    // פתיחה/סגירה של הדיאלוג (toggle - לחיצה חוזרת סוגרת)
     btnSettings.addEventListener('click', () => {
-        syncUIToState(); // עדכון ה-UI למצב השמור לפני הפתיחה
-        dialog.showModal();
+        if (dialog.open) {
+            dialog.close();
+        } else {
+            syncUIToState();
+            dialog.showModal();
+        }
     });
     btnClose.addEventListener('click', () => dialog.close());
 
@@ -19,7 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
         stamFontSize: document.getElementById('setting-stam-size'),
         nikudFontSize: document.getElementById('setting-nikud-size'),
         hideStam: document.getElementById('setting-hide-stam'),
-        hideNikud: document.getElementById('setting-hide-nikud')
+        hideNikud: document.getElementById('setting-hide-nikud'),
+        zoom: document.getElementById('setting-zoom')
     };
 
     // פונקציה שמסנכרנת את ערכי ה-DOM מה-State
@@ -30,9 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.nikudFontSize.value = AppState.settings.nikudFontSize;
         inputs.hideStam.checked = AppState.settings.hideStam;
         inputs.hideNikud.checked = AppState.settings.hideNikud;
-        
+        if (inputs.zoom) inputs.zoom.value = AppState.settings.zoom || 100;
+
         document.getElementById('stam-size-val').innerText = AppState.settings.stamFontSize;
         document.getElementById('nikud-size-val').innerText = AppState.settings.nikudFontSize;
+        const zoomVal = document.getElementById('zoom-val');
+        if (zoomVal) zoomVal.innerText = AppState.settings.zoom || 100;
     }
 
     // פונקציה לעדכון ושמירה ברגע שיש שינוי באחד האלמנטים
@@ -58,6 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     inputs.hideStam.addEventListener('change', (e) => handleSettingChange('hideStam', e.target.checked));
     inputs.hideNikud.addEventListener('change', (e) => handleSettingChange('hideNikud', e.target.checked));
+    if (inputs.zoom) {
+        inputs.zoom.addEventListener('input', (e) => {
+            const v = parseInt(e.target.value);
+            document.getElementById('zoom-val').innerText = v;
+            handleSettingChange('zoom', v);
+        });
+    }
 });
 
 // שמירת ההגדרות ב-Storage המקומי של אוצריא

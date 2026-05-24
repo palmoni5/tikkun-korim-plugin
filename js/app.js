@@ -6,10 +6,11 @@ const AppState = {
         nikudFont: 'Standard',
         stamFontSize: 28,
         nikudFontSize: 24,
-        stamColor: '', 
+        stamColor: '',
         nikudColor: '',
         hideStam: false,
-        hideNikud: false
+        hideNikud: false,
+        zoom: 100 // אחוזי זום של התצוגה (50-200)
     }
 };
 
@@ -55,6 +56,14 @@ function applySettingsToUI() {
 
     document.body.classList.toggle('hide-stam-column', settings.hideStam);
     document.body.classList.toggle('hide-nikud-column', settings.hideNikud);
+
+    // זום: לא משנה את חישוב השורות, רק את התצוגה
+    const zoomEl = document.getElementById('reader-container');
+    if (zoomEl) {
+        const z = Math.max(50, Math.min(200, settings.zoom || 100));
+        zoomEl.style.transform = `scale(${z / 100})`;
+        zoomEl.style.transformOrigin = 'top center';
+    }
 }
 
 // === אירועי מחזור חיים מול ה-SDK של אוצריא ===
