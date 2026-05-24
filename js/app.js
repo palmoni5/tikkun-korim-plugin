@@ -57,13 +57,19 @@ function applySettingsToUI() {
     document.body.classList.toggle('hide-stam-column', settings.hideStam);
     document.body.classList.toggle('hide-nikud-column', settings.hideNikud);
 
-    // זום: לא משנה את חישוב השורות, רק את התצוגה
+    // זום: לא משנה את חישוב השורות, רק את התצוגה.
+    // נשתמש ב-CSS zoom (לא transform) - הוא משנה את הגדלים בפועל,
+    // כך שכשהזום > 100% תופיע גלילה אופקית אוטומטית.
     const zoomEl = document.getElementById('reader-container');
     if (zoomEl) {
         const z = Math.max(50, Math.min(200, settings.zoom || 100));
-        zoomEl.style.transform = `scale(${z / 100})`;
-        zoomEl.style.transformOrigin = 'top center';
+        zoomEl.style.zoom = z / 100;
+        // ניקוי שאריות transform מגרסה קודמת
+        zoomEl.style.transform = '';
+        zoomEl.style.transformOrigin = '';
     }
+    // ודא שה-body מאפשר גלילה אופקית כשהתוכן רחב מהמסך
+    document.body.style.overflowX = 'auto';
 }
 
 // === אירועי מחזור חיים מול ה-SDK של אוצריא ===

@@ -82,6 +82,7 @@ function updateUIForSection() {
     document.getElementById('select-method').style.display = isTorah ? '' : 'none';
     document.getElementById('select-book').style.display = isTorah ? '' : 'none';
     document.getElementById('select-parasha').style.display = isTorah ? '' : 'none';
+    document.getElementById('select-aliya').style.display = isTorah ? '' : 'none';
     document.getElementById('select-chapter').style.display = isTorah ? 'none' : '';
     // ה-select-book משמש לתורה; לנביאים/כתובים נצטרך select אחר.
     // לפשטות, נשתמש שוב ב-select-book אם זה לא תורה, אבל נמלא בו ספרי נ"ך
@@ -202,6 +203,7 @@ function populateBookSelect() {
     };
     parashaSelect.onchange = (e) => {
         currentNavState.parashaName = e.target.value;
+        populateAliyaSelect();
         navigateToCurrentParasha();
     };
     populateParashaSelect();
@@ -218,7 +220,102 @@ function populateParashaSelect() {
         parashaSelect.appendChild(option);
     });
     currentNavState.parashaName = parashot[0];
+    populateAliyaSelect();
     navigateToCurrentParasha();
+}
+
+function populateAliyaSelect() {
+    const sel = document.getElementById('select-aliya');
+    if (!sel) return;
+    sel.innerHTML = '';
+    if (currentNavState.section !== 'torah') return;
+    const bookName = TORAH_STRUCTURE[currentNavState.bookId].name;
+    const normalized = normalizeParashaName(currentNavState.parashaName);
+    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+
+    // אפשרות "כל הפרשה" (לראש הפרשה)
+    const allOpt = document.createElement('option');
+    allOpt.value = '';
+    allOpt.textContent = 'כל הפרשה';
+    sel.appendChild(allOpt);
+
+    aliyot.forEach((a, idx) => {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = a.aliya; // "עליה א", "עליה ב", ...
+        sel.appendChild(opt);
+    });
+    sel.value = '';
+    sel.onchange = (e) => {
+        const idx = e.target.value;
+        if (idx === '') {
+            navigateToCurrentParasha();
+            return;
+        }
+        scrollToAliya(parseInt(idx));
+    };
+}
+
+function scrollToAliya(idx) {
+    if (!processedAll) return;
+    const bookName = TORAH_STRUCTURE[currentNavState.bookId].name;
+    const normalized = normalizeParashaName(currentNavState.parashaName);
+    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+    const a = aliyot[idx];
+    if (!a) return;
+
+    // מצא בעמודים הנוכחיים את המיקום של רצף המילים שמתחיל את העליה
+    const tokens = processedAll.tokens;
+    const targetWords = a.words;
+    // התחל לחפש מתחילת הפרשה
+    const bookStart = (processedAll.bookStartTokenIdx || {})[currentNavState.bookId] || 0;
+    const parashaTokenIdx = window.findParashaStart(tokens, normalized, bookStart);
+    const startFrom = parashaTokenIdx >= 0 ? parashaTokenIdx : bookStart;
+
+    const aliyaTokenIdx = findWordSequence(tokens, targetWords, startFrom);
+    if (aliyaTokenIdx < 0) {
+        console.warn('Aliya not found:', a.aliya);
+        return;
+    }
+
+    // מצא שורה ועמוד
+    const lines = processedAll.allLines;
+    let foundLineIdx = -1;
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const thisStart = lines[lineIdx].startTokenIdx;
+        const nextStart = (lineIdx + 1 < lines.length) ? lines[lineIdx + 1].startTokenIdx : Infinity;
+        if (thisStart >= 0 && aliyaTokenIdx >= thisStart && aliyaTokenIdx < nextStart) {
+            foundLineIdx = lineIdx;
+            break;
+        }
+    }
+    if (foundLineIdx < 0) return;
+
+    for (let pIdx = 0; pIdx < processedAll.pages.length; pIdx++) {
+        const p = processedAll.pages[pIdx];
+        if (foundLineIdx >= p.startLineIdx && foundLineIdx < p.endLineIdx) {
+            currentNavState.currentColumnIndex = pIdx;
+            renderCurrentColumn(foundLineIdx - p.startLineIdx);
+            return;
+        }
+    }
+}
+
+function findWordSequence(tokens, words, fromIdx) {
+    const norm = (s) => s.replace(/[֑-ׇ־]/g, '').replace(/יקוק/g, 'יהוה');
+    const normWords = words.map(norm);
+    for (let i = fromIdx; i < tokens.length - words.length; i++) {
+        if (tokens[i].type !== 'word') continue;
+        let wIdx = 0, tIdx = i, ok = true;
+        while (wIdx < normWords.length && tIdx < tokens.length) {
+            const tok = tokens[tIdx];
+            if (tok.type !== 'word') { tIdx++; continue; }
+            if (norm(tok.value) !== normWords[wIdx]) { ok = false; break; }
+            wIdx++; tIdx++;
+        }
+        if (ok && wIdx === normWords.length) return i;
+    }
+    return -1;
 }
 
 // ניקוי טקסט גולמי - מוציא חלקים שלא רלוונטיים
