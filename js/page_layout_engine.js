@@ -385,13 +385,9 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             const qereStam = qere.replace(/[֑-ׇ]/g, '');
             if (!ketivStam && !qereStam) continue;
             const baseLen = (ketivStam || qereStam).length + 1;
-            // אם המילה לא נכנסת - לחתוך, אבל רק אם נשאר מספיק טקסט שיצדיק שורה חדשה.
-            // אחרת (מילים אחרונות) נאפשר חריגה קלה כדי לא ליצור שורה דלילה.
+            // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה (חיתוך פשוט)
             if (currentLine.length > 0 && charCount + baseLen > maxCharsPerLine) {
-                const remaining = lookaheadCharsUntilBoundary(tokens, i);
-                if (remaining >= NEW_LINE_THRESHOLD) {
-                    flushLine();
-                }
+                flushLine();
             }
             if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;
             if (typeof consumePendingMarkers === 'function') consumePendingMarkers();
@@ -411,14 +407,10 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             continue;
         }
 
-        // אם המילה לא נכנסת - לחתוך, אבל רק אם נשאר מספיק טקסט שיצדיק שורה חדשה.
-        // אחרת (מילים אחרונות) נאפשר חריגה קלה כדי לא ליצור שורה דלילה.
+        // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה (חיתוך פשוט)
         const wordLen = wordStam.length + 1;
         if (currentLine.length > 0 && charCount + wordLen > maxCharsPerLine) {
-            const remaining = lookaheadCharsUntilBoundary(tokens, i);
-            if (remaining >= NEW_LINE_THRESHOLD) {
-                flushLine();
-            }
+            flushLine();
         }
         if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;
         consumePendingMarkers();

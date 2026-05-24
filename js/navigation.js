@@ -92,11 +92,15 @@ function updateUIForSection() {
     const isHaftarot = s === 'haftarot';
     const isTanachBook = s === 'neviim' || s === 'ketuvim';
     document.getElementById('select-method').style.display = isTorah ? '' : 'none';
-    document.getElementById('select-book').style.display = isTanachBook ? '' : 'none';
+    // select-book משמש גם בתורה (חומשים) וגם בתנ"ך (ספרי נביאים/כתובים)
+    document.getElementById('select-book').style.display = (isTorah || isTanachBook) ? '' : 'none';
     document.getElementById('select-parasha').style.display = isTorah ? '' : 'none';
     document.getElementById('select-aliya').style.display = isTorah ? '' : 'none';
     document.getElementById('select-chapter').style.display = isTanachBook ? '' : 'none';
     document.getElementById('select-haftarah').style.display = isHaftarot ? '' : 'none';
+    if (isTorah) {
+        populateBookSelect();
+    }
     if (isTanachBook) {
         populateTanachBookSelect();
     }
@@ -829,6 +833,97 @@ document.getElementById('btn-prev-col').addEventListener('click', () => {
         renderCurrentColumn(0);
     }
 });
+
+// =================================================================
+// === סנכרון תפריטי הניווט לפי מיקום הגלילה ===
+// =================================================================
+
+// מוצא את אינדקס השורה הראשונה הגלויה כעת ב-container
+function getFirstVisibleLineIndex() {
+    const container = document.getElementById('reader-container');
+    if (!container) return -1;
+    const rows = container.querySelectorAll('.reader-row');
+    const scrollTop = container.scrollTop;
+    const containerTop = container.offsetTop;
+    for (let i = 0; i < rows.length; i++) {
+        const rowTop = rows[i].offsetTop - containerTop;
+        // השורה הראשונה שה-bottom שלה מתחת לראש ה-viewport
+        if (rowTop + rows[i].offsetHeight > scrollTop + 4) {
+            return i;
+        }
+    }
+    return rows.length - 1;
+}
+
+// מתרגם line index -> מספר פרק (לפי המפה של תנ"ך)
+function lineIdxToChapter(lineIdx) {
+    const map = window._currentTanachChapterMap;
+    if (!map) return null;
+    let lastCh = null;
+    const sortedChapters = Object.keys(map).map(Number).sort((a, b) => a - b);
+    for (const ch of sortedChapters) {
+        if (map[ch] <= lineIdx) lastCh = ch;
+        else break;
+    }
+    return lastCh;
+}
+
+// listener על גלילה ב-container - מעדכן את התפריטים העליונים
+let _scrollSyncRaf = 0;
+const _readerContainer = document.getElementById('reader-container');
+if (_readerContainer) {
+    _readerContainer.addEventListener('scroll', () => {
+        if (_scrollSyncRaf) return;
+        _scrollSyncRaf = requestAnimationFrame(() => {
+            _scrollSyncRaf = 0;
+            syncSelectsToScrollPosition();
+        });
+    });
+}
+
+function syncSelectsToScrollPosition() {
+    const section = currentNavState.section;
+    const lineIdx = getFirstVisibleLineIndex();
+    if (lineIdx < 0) return;
+
+    if (section === 'neviim' || section === 'ketuvim') {
+        const ch = lineIdxToChapter(lineIdx);
+        if (ch && ch !== currentNavState.tanachChapter) {
+            currentNavState.tanachChapter = ch;
+            const sel = document.getElementById('select-chapter');
+            if (sel) sel.value = String(ch);
+        }
+    } else if (section === 'torah' && processedAll) {
+        // עמוד תורה: זיהוי חומש ופרשה לפי השורה הגלויה
+        const pageStartLineIdx = processedAll.pages[currentNavState.currentColumnIndex]?.startLineIdx || 0;
+        const globalLineIdx = pageStartLineIdx + lineIdx;
+        const line = processedAll.allLines[globalLineIdx];
+        if (!line || line.startTokenIdx < 0) return;
+
+        // זיהוי חומש: ה-book שתחילתו <= startTokenIdx
+        const bookStarts = processedAll.bookStartTokenIdx || {};
+        let curBook = null;
+        for (const bookId of BOOKS_ORDER) {
+            const start = bookStarts[bookId];
+            if (start != null && start <= line.startTokenIdx) curBook = bookId;
+            else break;
+        }
+        if (curBook && curBook !== currentNavState.bookId) {
+            currentNavState.bookId = curBook;
+            const bs = document.getElementById('select-book');
+            if (bs) bs.value = curBook;
+            // עדכון בורר הפרשות לחומש החדש (בלי לטעון מחדש - אנחנו רק מסנכרנים תצוגה)
+            const parashaSelect = document.getElementById('select-parasha');
+            parashaSelect.innerHTML = '';
+            for (const p of TORAH_STRUCTURE[curBook].parashot) {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                parashaSelect.appendChild(opt);
+            }
+        }
+    }
+}
 
 // =================================================================
 // === הפטרות ===
