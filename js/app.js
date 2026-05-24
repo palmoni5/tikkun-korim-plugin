@@ -11,7 +11,9 @@ const AppState = {
         hideStam: false,
         hideNikud: false,
         zoom: 100, // אחוזי זום של התצוגה (50-200)
-        nusach: 'ashkenaz' // נוסח הפטרה: 'ashkenaz' / 'sephard'
+        nusach: 'ashkenaz', // נוסח הפטרה: 'ashkenaz' / 'sephard'
+        nusachLand: 'israel', // מנהג לקריאות חגים: 'israel' / 'diaspora'
+        lineSpacing: 1.3 // מרווח בין שורות (1.0 - 2.4)
     }
 };
 
@@ -51,6 +53,7 @@ function applySettingsToUI() {
     root.style.setProperty('--nikud-font-family', `'${settings.nikudFont}-Nikud', sans-serif`);
     root.style.setProperty('--stam-font-size', `${settings.stamFontSize}px`);
     root.style.setProperty('--nikud-font-size', `${settings.nikudFontSize}px`);
+    root.style.setProperty('--line-spacing', String(settings.lineSpacing || 1.6));
 
     if (settings.stamColor) root.style.setProperty('--stam-font-color', settings.stamColor);
     if (settings.nikudColor) root.style.setProperty('--nikud-font-color', settings.nikudColor);

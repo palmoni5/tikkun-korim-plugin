@@ -47,23 +47,32 @@
     padding: 0 8px; /* הוקטן מ-16 */
     display: flex;
     align-items: baseline;
-    line-height: 1.6;
+    line-height: var(--line-spacing, 1.6);
     justify-content: space-between; /* יישור לשני הכיוונים - כמו בכתב סת"ם */
     gap: 0.15em; /* רווח מינימלי בין מילים */
 }
 
 /* עמודה אמצעית - מספרי פרק/פסוק ושמות עליות */
 .markers-col {
-    flex: 0 0 70px; /* רוחב קבוע יחסית קטן */
+    flex: 0 0 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--nikud-font-family);
+    line-height: 1.15;
+    color: var(--md-sys-color-on-surface-variant);
+    user-select: none;
+    direction: rtl;
+}
+
+/* שתי שורות צמודות, ממורכזות אנכית לגובה ה-row של הטקסט. */
+.marker-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 4px;
-    font-family: var(--nikud-font-family);
-    line-height: 1.2;
-    color: var(--md-sys-color-on-surface-variant);
-    user-select: none;
+    gap: 1px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .marker-ref {
@@ -96,6 +105,15 @@
 .layout-petucha .nikud-col {
     justify-content: flex-start;
     gap: 0.4em;
+}
+
+/* שורה "חלקית" - יצאה בגלל מילה שלא נכנסה לשורה הבאה.
+   מציג עם רווחים אחידים בין מילים במקום פיזור על כל הרוחב (justify),
+   כדי למנוע רווחים מוזרים בין מעט מילים. */
+.layout-partial .stam-col,
+.layout-partial .nikud-col {
+    justify-content: flex-start;
+    gap: 0.6em;
 }
 
 

@@ -97,32 +97,45 @@ function numToHebrewGematria(n) {
 }
 
 /**
- * בניית התוכן של עמודת המסמנים האמצעית עבור שורה
+ * בניית התוכן של עמודת המסמנים האמצעית עבור שורה.
+ * prev = { ch, vs } - הפרק/פסוק האחרונים שהוצגו (לזיהוי "פרק חדש או לא").
+ *
+ * כללי הצגה:
+ * - aliyaName: תמיד.
+ * - פסוק (firstVerseNum): תמיד, אם השורה מתחילה בפסוק חדש.
+ * - "פרק:פסוק" (במקום רק פסוק) רק כשבאמת מתחיל פרק חדש - שונה מהפרק שהיה לפני כן.
+ *   כך מונעים "פרק חדש" מזויף בקריאות בין עליות שמתחילות באותו פרק.
  */
-function buildMarkerContent(lineObj) {
-    const parts = [];
-    // עליה: בלוק עליון
+function buildMarkerContent(lineObj, prev) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'marker-wrapper';
+    const curCh = lineObj.firstChapterNum;
+    const curVs = lineObj.firstVerseNum;
+
     if (lineObj.aliyaName) {
-        const aliyaEl = document.createElement('div');
-        aliyaEl.className = 'marker-aliya';
-        aliyaEl.textContent = lineObj.aliyaName;
-        parts.push(aliyaEl);
+        const aliyaSpan = document.createElement('span');
+        aliyaSpan.className = 'marker-aliya';
+        aliyaSpan.textContent = lineObj.aliyaName;
+        wrapper.appendChild(aliyaSpan);
     }
-    // פרק:פסוק (תחילת פרק) או פסוק בלבד
-    if (lineObj.firstChapterNum != null) {
-        const refEl = document.createElement('div');
-        refEl.className = 'marker-ref marker-ref-chapter';
-        const ch = numToHebrewGematria(lineObj.firstChapterNum);
-        const vs = numToHebrewGematria(lineObj.firstVerseNum || 1);
-        refEl.textContent = `${ch}:${vs}`;
-        parts.push(refEl);
-    } else if (lineObj.firstVerseNum != null) {
-        const vsEl = document.createElement('div');
-        vsEl.className = 'marker-ref marker-ref-verse';
-        vsEl.textContent = numToHebrewGematria(lineObj.firstVerseNum);
-        parts.push(vsEl);
+
+    const isReallyNewChapter = curCh != null && curCh !== prev.ch;
+
+    if (isReallyNewChapter) {
+        const refSpan = document.createElement('span');
+        refSpan.className = 'marker-ref marker-ref-chapter';
+        const ch = numToHebrewGematria(curCh);
+        const vs = numToHebrewGematria(curVs || 1);
+        refSpan.textContent = `${ch}:${vs}`;
+        wrapper.appendChild(refSpan);
+    } else if (curVs != null) {
+        const vsSpan = document.createElement('span');
+        vsSpan.className = 'marker-ref marker-ref-verse';
+        vsSpan.textContent = numToHebrewGematria(curVs);
+        wrapper.appendChild(vsSpan);
     }
-    return parts;
+
+    return wrapper.children.length > 0 ? [wrapper] : [];
 }
 
 /**
@@ -154,6 +167,9 @@ function renderColumnUI(columnLines) {
     const page = document.createElement('div');
     page.className = 'reader-page';
 
+    // מעקב אחרי הפרק והפסוק האחרונים שהוצגו - לזיהוי רצף
+    const prev = { ch: null, vs: null };
+
     columnLines.forEach(lineObj => {
         const row = document.createElement('div');
         row.className = `reader-row layout-${lineObj.layout}`;
@@ -164,8 +180,12 @@ function renderColumnUI(columnLines) {
         // עמודת המסמנים האמצעית - מספרי פרק/פסוק ושם עליה
         const markersCell = document.createElement('div');
         markersCell.className = 'markers-col';
-        const markerParts = buildMarkerContent(lineObj);
+        const markerParts = buildMarkerContent(lineObj, prev);
         markerParts.forEach(p => markersCell.appendChild(p));
+
+        // עדכון prev לפי השורה הנוכחית
+        if (lineObj.firstChapterNum != null) prev.ch = lineObj.firstChapterNum;
+        if (lineObj.firstVerseNum != null) prev.vs = lineObj.firstVerseNum;
 
         const nikudCell = document.createElement('div');
         nikudCell.className = 'nikud-col';

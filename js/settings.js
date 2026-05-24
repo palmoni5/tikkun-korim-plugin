@@ -16,6 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     btnClose.addEventListener('click', () => dialog.close());
 
+    // סגירה בלחיצה מחוץ לדיאלוג (על ה-backdrop)
+    dialog.addEventListener('click', (e) => {
+        // לחיצה על ה-dialog עצמו (לא על תוכן פנימי) = לחיצה על ה-backdrop
+        const rect = dialog.getBoundingClientRect();
+        const inside = (
+            e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom
+        );
+        if (!inside) {
+            dialog.close();
+        }
+    });
+
     // מיפוי האלמנטים בדיאלוג
     const inputs = {
         stamFont: document.getElementById('setting-stam-font'),
@@ -25,7 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
         hideStam: document.getElementById('setting-hide-stam'),
         hideNikud: document.getElementById('setting-hide-nikud'),
         zoom: document.getElementById('setting-zoom'),
-        nusach: document.getElementById('setting-nusach')
+        nusach: document.getElementById('setting-nusach'),
+        nusachLand: document.getElementById('setting-nusach-land'),
+        lineSpacing: document.getElementById('setting-line-spacing')
     };
 
     // פונקציה שמסנכרנת את ערכי ה-DOM מה-State
@@ -38,11 +53,15 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.hideNikud.checked = AppState.settings.hideNikud;
         if (inputs.zoom) inputs.zoom.value = AppState.settings.zoom || 100;
         if (inputs.nusach) inputs.nusach.value = AppState.settings.nusach || 'ashkenaz';
+        if (inputs.nusachLand) inputs.nusachLand.value = AppState.settings.nusachLand || 'israel';
+        if (inputs.lineSpacing) inputs.lineSpacing.value = AppState.settings.lineSpacing || 1.6;
 
         document.getElementById('stam-size-val').innerText = AppState.settings.stamFontSize;
         document.getElementById('nikud-size-val').innerText = AppState.settings.nikudFontSize;
         const zoomVal = document.getElementById('zoom-val');
         if (zoomVal) zoomVal.innerText = AppState.settings.zoom || 100;
+        const lineSpacingVal = document.getElementById('line-spacing-val');
+        if (lineSpacingVal) lineSpacingVal.innerText = AppState.settings.lineSpacing || 1.6;
     }
 
     // פונקציה לעדכון ושמירה ברגע שיש שינוי באחד האלמנטים
@@ -83,6 +102,32 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentNavState && currentNavState.section === 'haftarot' && typeof loadAndDisplayHaftarah === 'function') {
                 loadAndDisplayHaftarah();
             }
+        });
+    }
+    if (inputs.nusachLand) {
+        inputs.nusachLand.addEventListener('change', (e) => {
+            AppState.settings.nusachLand = e.target.value;
+            saveSettingsToStorage();
+            // אם כעת מציגים קריאת חג - סינון הרשימה מחדש
+            if (currentNavState && currentNavState.section === 'torah_readings' && typeof populateTorahReadingSelect === 'function') {
+                populateTorahReadingSelect();
+                // אם הקריאה הנוכחית לא קיימת במנהג החדש - לטעון את הראשונה
+                const list = (window.TORAH_READINGS_LIST || []).filter(r =>
+                    r.land === 'both' || r.land === AppState.settings.nusachLand);
+                const stillExists = list.some(r => r.id === currentNavState.torahReadingId);
+                if (!stillExists && list.length > 0) {
+                    currentNavState.torahReadingId = list[0].id;
+                    document.getElementById('select-torah-reading').value = list[0].id;
+                    loadAndDisplayTorahReading();
+                }
+            }
+        });
+    }
+    if (inputs.lineSpacing) {
+        inputs.lineSpacing.addEventListener('input', (e) => {
+            const v = parseFloat(e.target.value);
+            document.getElementById('line-spacing-val').innerText = v.toFixed(1);
+            handleSettingChange('lineSpacing', v);
         });
     }
 });

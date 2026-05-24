@@ -322,6 +322,14 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             continue;
         }
 
+        if (tok.type === 'aliya_break') {
+            // הפסקה כפויה לתחילת עליה חדשה (בלי לשנות layout - נשאר רגיל)
+            if (currentLine.length > 0) {
+                flushLine();
+            }
+            continue;
+        }
+
         if (tok.type === 'book_break') {
             // מעבר בין חומשים - 4 שורות ריקות (כמו בספר תורה אמיתי)
             if (currentLine.length > 0) {
@@ -385,8 +393,13 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             const qereStam = qere.replace(/[֑-ׇ]/g, '');
             if (!ketivStam && !qereStam) continue;
             const baseLen = (ketivStam || qereStam).length + 1;
-            // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה (חיתוך פשוט)
+            // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה.
+            // שורה שיוצאת קצרה משמעותית (פחות מ-65% מהמכסה) - מסומנת 'partial'
+            // כדי שלא תוצג עם רווחים מוזרים. שורות באורך תקין נשארות 'regular' עם יישור מלא.
             if (currentLine.length > 0 && charCount + baseLen > maxCharsPerLine) {
+                if (lineLayout === 'regular' && charCount < maxCharsPerLine * 0.65) {
+                    lineLayout = 'partial';
+                }
                 flushLine();
             }
             if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;
@@ -407,9 +420,14 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             continue;
         }
 
-        // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה (חיתוך פשוט)
+        // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה.
+        // שורה שיוצאת קצרה משמעותית (פחות מ-65% מהמכסה) - מסומנת 'partial'
+        // כדי שלא תוצג עם רווחים מוזרים. שורות באורך תקין נשארות 'regular' עם יישור מלא.
         const wordLen = wordStam.length + 1;
         if (currentLine.length > 0 && charCount + wordLen > maxCharsPerLine) {
+            if (lineLayout === 'regular' && charCount < maxCharsPerLine * 0.65) {
+                lineLayout = 'partial';
+            }
             flushLine();
         }
         if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;

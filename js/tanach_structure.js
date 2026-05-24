@@ -48,6 +48,7 @@ const TANACH_SECTIONS = {
     torah: { name: 'תורה', books: null }, // מטופל בנפרד
     neviim: { name: 'נביאים', books: TANACH_NEVIIM },
     ketuvim: { name: 'כתובים', books: TANACH_KETUVIM },
+    torah_readings: { name: 'קריאות', books: null }, // מטופל מול TORAH_READINGS_LIST
     haftarot: { name: 'הפטרות', books: null } // מטופל בנפרד מול HAFTAROT_LIST
 };
 

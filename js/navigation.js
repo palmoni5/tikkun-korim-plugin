@@ -27,7 +27,8 @@ let currentNavState = {
     tanachChapter: 1,
     currentColumnIndex: 0,
     targetTokenIdx: -1,
-    haftarahId: null      // מזהה ההפטרה הנבחרת
+    haftarahId: null,     // מזהה ההפטרה הנבחרת
+    torahReadingId: null  // מזהה הקריאה לחג/מועד הנבחרת
 };
 
 // Cache - כל חומש נטען פעם אחת
@@ -74,6 +75,17 @@ function populateSectionSelect() {
                 document.getElementById('select-haftarah').value = firstId;
                 loadAndDisplayHaftarah();
             }
+        } else if (currentNavState.section === 'torah_readings') {
+            populateTorahReadingSelect();
+            const land = (AppState.settings && AppState.settings.nusachLand) || 'israel';
+            const list = (window.TORAH_READINGS_LIST || []).filter(r =>
+                !r.land || r.land === 'both' || r.land === land);
+            const firstId = list[0]?.id;
+            if (firstId) {
+                currentNavState.torahReadingId = firstId;
+                document.getElementById('select-torah-reading').value = firstId;
+                loadAndDisplayTorahReading();
+            }
         } else {
             // נביאים/כתובים: בחר ספר ראשון
             const books = window.TANACH_SECTIONS[currentNavState.section].books;
@@ -90,23 +102,19 @@ function updateUIForSection() {
     const s = currentNavState.section;
     const isTorah = s === 'torah';
     const isHaftarot = s === 'haftarot';
+    const isTorahReading = s === 'torah_readings';
     const isTanachBook = s === 'neviim' || s === 'ketuvim';
     document.getElementById('select-method').style.display = isTorah ? '' : 'none';
-    // select-book משמש גם בתורה (חומשים) וגם בתנ"ך (ספרי נביאים/כתובים)
     document.getElementById('select-book').style.display = (isTorah || isTanachBook) ? '' : 'none';
     document.getElementById('select-parasha').style.display = isTorah ? '' : 'none';
     document.getElementById('select-aliya').style.display = isTorah ? '' : 'none';
     document.getElementById('select-chapter').style.display = isTanachBook ? '' : 'none';
     document.getElementById('select-haftarah').style.display = isHaftarot ? '' : 'none';
-    if (isTorah) {
-        populateBookSelect();
-    }
-    if (isTanachBook) {
-        populateTanachBookSelect();
-    }
-    if (isHaftarot) {
-        populateHaftarahSelect();
-    }
+    document.getElementById('select-torah-reading').style.display = isTorahReading ? '' : 'none';
+    if (isTorah) populateBookSelect();
+    if (isTanachBook) populateTanachBookSelect();
+    if (isHaftarot) populateHaftarahSelect();
+    if (isTorahReading) populateTorahReadingSelect();
 }
 
 function populateTanachBookSelect() {
@@ -594,8 +602,23 @@ const ALIYA_DISPLAY_NAMES = {
     'עליה ז': 'שביעי'
 };
 
-// עוברים על כל הפרשיות בתורה, ומוצאים את השורה שבה מתחילה כל עליה
+// עוברים על כל הפרשיות בתורה, ומוצאים את השורה שבה מתחילה כל פרשה ועליה.
+// מסמנים `aliyaName` לתחילת עליה ו-`parashaName` לתחילת פרשה.
 function annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
+    // עזר - מציאת אינדקס השורה שמכילה טוקן מסוים
+    const findLineForToken = (tokenIdx) => {
+        for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
+            const thisStart = allLines[lineIdx].startTokenIdx;
+            const nextStart = (lineIdx + 1 < allLines.length)
+                ? allLines[lineIdx + 1].startTokenIdx
+                : Infinity;
+            if (thisStart >= 0 && tokenIdx >= thisStart && tokenIdx < nextStart) {
+                return lineIdx;
+            }
+        }
+        return -1;
+    };
+
     for (const bookId of BOOKS_ORDER) {
         const bookName = TORAH_STRUCTURE[bookId].name;
         const parashot = TORAH_STRUCTURE[bookId].parashot;
@@ -609,24 +632,22 @@ function annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
                 : -1;
             const parashaStart = parashaTokenIdx >= 0 ? parashaTokenIdx : searchFrom;
 
+            // סימון שורת תחילת פרשה
+            const parashaLineIdx = findLineForToken(parashaStart);
+            if (parashaLineIdx >= 0 && !allLines[parashaLineIdx].parashaName) {
+                allLines[parashaLineIdx].parashaName = parashaName;
+            }
+
             const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
             let aliyaSearchFrom = parashaStart;
             for (const a of aliyot) {
                 const aliyaTokenIdx = findWordSequence(tokens, a.words, aliyaSearchFrom);
                 if (aliyaTokenIdx < 0) continue;
-                // מצא את השורה המתאימה לטוקן זה
-                for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
-                    const thisStart = allLines[lineIdx].startTokenIdx;
-                    const nextStart = (lineIdx + 1 < allLines.length)
-                        ? allLines[lineIdx + 1].startTokenIdx
-                        : Infinity;
-                    if (thisStart >= 0 && aliyaTokenIdx >= thisStart && aliyaTokenIdx < nextStart) {
-                        // אם השורה כבר שויכה לעליה אחרת - אל תדרוס
-                        if (!allLines[lineIdx].aliyaName) {
-                            allLines[lineIdx].aliyaName = ALIYA_DISPLAY_NAMES[a.aliya] || a.aliya;
-                        }
-                        break;
-                    }
+                const aliyaLineIdx = findLineForToken(aliyaTokenIdx);
+                if (aliyaLineIdx >= 0 && !allLines[aliyaLineIdx].aliyaName) {
+                    allLines[aliyaLineIdx].aliyaName = ALIYA_DISPLAY_NAMES[a.aliya] || a.aliya;
+                    // שמירה גם של שם העליה המקורי (לעדכון select-aliya)
+                    allLines[aliyaLineIdx].aliyaIdx = aliyot.indexOf(a);
                 }
                 aliyaSearchFrom = aliyaTokenIdx + 1;
             }
@@ -824,6 +845,8 @@ document.getElementById('btn-next-col').addEventListener('click', () => {
     if (currentNavState.currentColumnIndex < paginatedColumns.length - 1) {
         currentNavState.currentColumnIndex++;
         renderCurrentColumn(0);
+        // עדכון תפריטים בעקבות מעבר עמוד
+        setTimeout(syncSelectsToScrollPosition, 0);
     }
 });
 
@@ -831,6 +854,7 @@ document.getElementById('btn-prev-col').addEventListener('click', () => {
     if (currentNavState.currentColumnIndex > 0) {
         currentNavState.currentColumnIndex--;
         renderCurrentColumn(0);
+        setTimeout(syncSelectsToScrollPosition, 0);
     }
 });
 
@@ -894,7 +918,7 @@ function syncSelectsToScrollPosition() {
             if (sel) sel.value = String(ch);
         }
     } else if (section === 'torah' && processedAll) {
-        // עמוד תורה: זיהוי חומש ופרשה לפי השורה הגלויה
+        // עמוד תורה: זיהוי חומש, פרשה ועליה לפי השורה הגלויה
         const pageStartLineIdx = processedAll.pages[currentNavState.currentColumnIndex]?.startLineIdx || 0;
         const globalLineIdx = pageStartLineIdx + lineIdx;
         const line = processedAll.allLines[globalLineIdx];
@@ -912,7 +936,7 @@ function syncSelectsToScrollPosition() {
             currentNavState.bookId = curBook;
             const bs = document.getElementById('select-book');
             if (bs) bs.value = curBook;
-            // עדכון בורר הפרשות לחומש החדש (בלי לטעון מחדש - אנחנו רק מסנכרנים תצוגה)
+            // עדכון בורר הפרשות לחומש החדש (בלי לטעון מחדש - רק תצוגה)
             const parashaSelect = document.getElementById('select-parasha');
             parashaSelect.innerHTML = '';
             for (const p of TORAH_STRUCTURE[curBook].parashot) {
@@ -922,7 +946,60 @@ function syncSelectsToScrollPosition() {
                 parashaSelect.appendChild(opt);
             }
         }
+
+        // זיהוי פרשה: חיפוש לאחור עד שמוצאים שורה עם parashaName
+        let curParasha = null;
+        for (let j = globalLineIdx; j >= 0; j--) {
+            if (processedAll.allLines[j]?.parashaName) {
+                curParasha = processedAll.allLines[j].parashaName;
+                break;
+            }
+        }
+        if (curParasha && curParasha !== currentNavState.parashaName) {
+            currentNavState.parashaName = curParasha;
+            const ps = document.getElementById('select-parasha');
+            if (ps) ps.value = curParasha;
+            // עדכון בורר העליות לפרשה החדשה (בלי לטעון מחדש)
+            populateAliyaSelectQuiet();
+        }
+
+        // זיהוי עליה: חיפוש לאחור עד שמוצאים aliyaIdx, רק בתוך אותה פרשה
+        let curAliyaIdx = null;
+        for (let j = globalLineIdx; j >= 0; j--) {
+            const l = processedAll.allLines[j];
+            if (!l) continue;
+            if (l.parashaName && l.parashaName !== curParasha) break; // עזיבת הפרשה
+            if (l.aliyaIdx != null) {
+                curAliyaIdx = l.aliyaIdx;
+                break;
+            }
+        }
+        const aliyaSel = document.getElementById('select-aliya');
+        if (aliyaSel) {
+            const newVal = curAliyaIdx != null ? String(curAliyaIdx) : '';
+            if (aliyaSel.value !== newVal) aliyaSel.value = newVal;
+        }
     }
+}
+
+// בונה את select-aliya לפי הפרשה הנוכחית בלי לקרוא ל-navigate (לסנכרון בלבד)
+function populateAliyaSelectQuiet() {
+    const sel = document.getElementById('select-aliya');
+    if (!sel) return;
+    sel.innerHTML = '';
+    const bookName = TORAH_STRUCTURE[currentNavState.bookId].name;
+    const normalized = normalizeParashaName(currentNavState.parashaName);
+    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+    const allOpt = document.createElement('option');
+    allOpt.value = '';
+    allOpt.textContent = 'כל הפרשה';
+    sel.appendChild(allOpt);
+    aliyot.forEach((a, idx) => {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = a.aliya;
+        sel.appendChild(opt);
+    });
 }
 
 // =================================================================
@@ -1120,4 +1197,222 @@ async function loadAndDisplayHaftarah() {
     };
 
     renderCurrentColumn();
+}
+
+// =================================================================
+// === קריאות התורה לחגים/מועדים/ר"ח/חנוכה/שבתות מיוחדות ===
+// =================================================================
+
+function populateTorahReadingSelect() {
+    const sel = document.getElementById('select-torah-reading');
+    if (!sel) return;
+    const rawList = window.TORAH_READINGS_LIST || [];
+    // סינון לפי מנהג (א"י/חו"ל) - 'both' נשאר תמיד.
+    // AppState הוא const ב-app.js, אז ניגשים אליו ישירות (לא דרך window).
+    const land = (typeof AppState !== 'undefined' && AppState.settings && AppState.settings.nusachLand) || 'israel';
+    const list = rawList.filter(r => !r.land || r.land === 'both' || r.land === land);
+    const categories = window.TORAH_READINGS_CATEGORIES || {};
+    sel.innerHTML = '';
+
+    // קיבוץ לפי קטגוריה (סדר לפי בקשת המשתמש):
+    // ר"ח, פסח, שבועות, תשעה באב, ר"ה, יו"כ, סוכות, חנוכה, פורים, שבתות מיוחדות, תעניות
+    const catOrder = ['roshChodesh','pesach','shavuot','roshHashana','yomKippur',
+                      'sukkot','chanukah','purim','specialShabbat','fast','modern','other'];
+    for (const cat of catOrder) {
+        const items = list.filter(h => h.category === cat);
+        if (!items.length) continue;
+        const grp = document.createElement('optgroup');
+        grp.label = categories[cat] || cat;
+        for (const h of items) {
+            const opt = document.createElement('option');
+            opt.value = h.id;
+            opt.textContent = h.name;
+            grp.appendChild(opt);
+        }
+        sel.appendChild(grp);
+    }
+
+    if (currentNavState.torahReadingId) {
+        sel.value = currentNavState.torahReadingId;
+    } else if (list.length > 0) {
+        currentNavState.torahReadingId = list[0].id;
+        sel.value = list[0].id;
+    }
+    sel.onchange = (e) => {
+        currentNavState.torahReadingId = e.target.value;
+        loadAndDisplayTorahReading();
+    };
+}
+
+// טעינת חומש מהאוצריא (cache משותף ל-TorahBookCache הקיים)
+async function loadTorahBookByName(bookHeName, requestId) {
+    // מציאת ה-bookId לפי השם העברי
+    let bookId = null;
+    for (const id of BOOKS_ORDER) {
+        if (TORAH_STRUCTURE[id].name === bookHeName) { bookId = id; break; }
+    }
+    if (!bookId) return null;
+
+    if (TorahBookCache[bookId + '_processed']) return TorahBookCache[bookId + '_processed'];
+
+    const rawText = await fetchFullBook(bookId);
+    if (requestId != null && requestId !== fetchRequestId) return null;
+    const cleaned = cleanRawText(rawText);
+    const tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+    const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
+    const processed = { tokens, allLines };
+    TorahBookCache[bookId + '_processed'] = processed;
+    return processed;
+}
+
+async function loadAndDisplayTorahReading() {
+    const myRequestId = ++fetchRequestId;
+    const container = document.getElementById('reader-container');
+    container.innerHTML = '<div style="text-align:center; padding: 40px;">טוען...</div>';
+    window._currentHeader = null;
+
+    const reading = (window.TORAH_READINGS_LIST || []).find(r => r.id === currentNavState.torahReadingId);
+    if (!reading) {
+        container.innerHTML = '<div style="text-align:center; padding: 40px;">קריאה לא נמצאה.</div>';
+        return;
+    }
+    if (!reading.aliyot || !reading.aliyot.length) {
+        container.innerHTML = '<div style="text-align:center; padding: 40px;">אין קריאת תורה מוגדרת.</div>';
+        return;
+    }
+
+    // עבור כל עליה - טען חומש וחתוך את הטוקנים לפי טווח הפסוקים.
+    // שמירת מיקום תחילת כל עליה ב-combinedTokens כדי לסמן aliyaName בעמודה המרכזית.
+    // הפסק (petucha) מוסף **רק** במעבר לא רציף במקור (למשל מפטיר ממקום אחר בתורה).
+    // אם הטקסט רציף - לא מוסיפים petucha; אם יש פתוחה/סתומה במקור היא תבוא דרך החיתוך.
+    let combinedTokens = [];
+    const aliyaMarkers = []; // { tokenIdx, label, aliyaKey }
+    let lastAliyaKey = null;
+    let lastTo = null; // { book, ch, vs } - הפסוק האחרון שצורף
+    const cmpV = (chA, vsA, chB, vsB) => chA !== chB ? chA - chB : vsA - vsB;
+
+    for (let aIdx = 0; aIdx < reading.aliyot.length; aIdx++) {
+        const a = reading.aliyot[aIdx];
+        const processed = await loadTorahBookByName(a.book, myRequestId);
+        if (myRequestId !== fetchRequestId) return;
+        if (!processed) continue;
+
+        const [fromCh, fromVs] = a.from.split(':').map(s => parseInt(s, 10));
+        const [toCh, toVs] = a.to.split(':').map(s => parseInt(s, 10));
+        const tokenSlice = sliceTokensByVerseRange(processed.tokens, fromCh, fromVs, toCh, toVs);
+
+        // הפסק רק במעבר לא רציף במקור
+        const isNewAliya = a.aliya !== lastAliyaKey;
+        if (isNewAliya && lastTo) {
+            const sameBook = a.book === lastTo.book;
+            const isAdjacent = sameBook && (
+                (fromCh === lastTo.ch && fromVs === lastTo.vs + 1) ||
+                (fromCh === lastTo.ch + 1 && fromVs === 1)
+            );
+            const isOverlap = sameBook && cmpV(fromCh, fromVs, lastTo.ch, lastTo.vs) <= 0;
+            if (!isAdjacent && !isOverlap) {
+                combinedTokens.push({ type: 'petucha' });
+            }
+            // בעליות רציפות במקור - לא להוסיף הפסקה. ה-aliyaName יסומן ב-line שמכיל
+            // את המילה הראשונה של העליה (גם אם היא בסוף שורה של עליה קודמת).
+        }
+        // סימון תחילת העליה (רק עליה חדשה, לא segs נוספים של אותה עליה)
+        if (isNewAliya) {
+            aliyaMarkers.push({
+                tokenIdx: combinedTokens.length,
+                label: a.aliyaLabel,
+                aliyaKey: a.aliya
+            });
+        }
+        combinedTokens = combinedTokens.concat(tokenSlice);
+        lastAliyaKey = a.aliya;
+        lastTo = { book: a.book, ch: toCh, vs: toVs };
+    }
+
+    if (myRequestId !== fetchRequestId) return;
+
+    const combinedLines = window.PageLayoutEngine.paginateAllTokens(combinedTokens, 36);
+
+    // סימון aliyaName ב-line שמכיל את המילה הראשונה של העליה.
+    // אם המילה הראשונה נכנסה לסוף שורה של עליה קודמת - נסמן באותה שורה.
+    for (const marker of aliyaMarkers) {
+        // מצא את ה-index של ה-word token הראשון אחרי marker.tokenIdx
+        let firstWordIdx = -1;
+        for (let j = marker.tokenIdx; j < combinedTokens.length; j++) {
+            if (combinedTokens[j].type === 'word') {
+                firstWordIdx = j;
+                break;
+            }
+        }
+        if (firstWordIdx < 0) continue;
+        // מצא את ה-line שמכיל את firstWordIdx
+        for (let i = 0; i < combinedLines.length; i++) {
+            const line = combinedLines[i];
+            const nextStart = (i + 1 < combinedLines.length)
+                ? combinedLines[i + 1].startTokenIdx
+                : Infinity;
+            if (line.startTokenIdx >= 0 &&
+                line.startTokenIdx <= firstWordIdx &&
+                firstWordIdx < nextStart) {
+                if (!line.aliyaName) line.aliyaName = marker.label;
+                break;
+            }
+        }
+    }
+
+    if (combinedLines.length > 0) {
+        combinedLines[combinedLines.length - 1].layout = 'petucha';
+    }
+
+    paginatedColumns = [combinedLines];
+    currentNavState.currentColumnIndex = 0;
+    processedAll = null;
+    window._currentTanachChapterMap = null;
+
+    // חישוב טווחים רציפים לכותרת:
+    // עליות שמהאותו ספר ושפסוקיהן עוקבים/חופפים - נמזגות לטווח אחד.
+    const segments = computeContinuousSegments(reading.aliyot);
+    const subtitle = segments.map(s =>
+        `${s.book} ${formatVerseRefHebrew(s.from)} – ${formatVerseRefHebrew(s.to)}`
+    ).join('; ');
+    window._currentHeader = { title: reading.name, subtitle: 'קריאה: ' + subtitle };
+
+    renderCurrentColumn();
+}
+
+// ממזג עליות עוקבות/חופפות לטווחים רציפים (לצורך תצוגה בכותרת)
+function computeContinuousSegments(aliyot) {
+    if (!aliyot.length) return [];
+    const parseRef = (s) => s.split(':').map(n => parseInt(n, 10));
+    const cmp = (chA, vsA, chB, vsB) => chA !== chB ? chA - chB : vsA - vsB;
+
+    const segs = [];
+    let cur = { book: aliyot[0].book, from: aliyot[0].from, to: aliyot[0].to };
+    for (let i = 1; i < aliyot.length; i++) {
+        const a = aliyot[i];
+        const [curToCh, curToVs] = parseRef(cur.to);
+        const [aFromCh, aFromVs] = parseRef(a.from);
+        const [aToCh, aToVs] = parseRef(a.to);
+
+        const sameBook = a.book === cur.book;
+        // עוקב: פסוק הבא באותו פרק או פסוק 1 בפרק הבא
+        const isAdjacent = sameBook && (
+            (aFromCh === curToCh && aFromVs === curToVs + 1) ||
+            (aFromCh === curToCh + 1 && aFromVs === 1)
+        );
+        // חופף: מתחיל בתוך הטווח הקיים (למשל מפטיר חופף לסוף עליה ז')
+        const isOverlap = sameBook && cmp(aFromCh, aFromVs, curToCh, curToVs) <= 0;
+
+        if (isAdjacent || isOverlap) {
+            // הרחב את ה-to אם החדש מאוחר יותר
+            if (cmp(aToCh, aToVs, curToCh, curToVs) > 0) {
+                cur.to = a.to;
+            }
+        } else {
+            segs.push(cur);
+            cur = { book: a.book, from: a.from, to: a.to };
+        }
+    }
+    segs.push(cur);
+    return segs;
 }
