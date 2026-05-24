@@ -3,64 +3,66 @@
 .reader-page {
     display: flex;
     flex-direction: column;
-    max-width: 1250px; /* רוחב סביר - לא רחב מדי שיוצר רווחים ענקיים, אבל מספיק שלא תהיינה בליטות */
+    max-width: 1250px;
     margin: 0 auto;
-    background-color: var(--md-sys-color-surface);
-    border-radius: 12px;
-    padding: 16px 12px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-md);
+    padding: 1em 0.75em;
+    box-shadow: 0 4px 8px var(--shadow-card);
 }
 
 /* כותרת בראש העמוד (לדוגמה: הפטרה - שם + ספר ופסוקים) */
 .reader-header {
     max-width: 1250px;
-    margin: 0 auto 12px;
-    padding: 16px 12px;
+    margin: 0 auto 0.75em;
+    padding: 1em 0.75em;
     text-align: center;
     direction: rtl;
 }
 .reader-header-title {
-    font-size: 26px;
+    font-size: 1.6em;
     font-weight: 700;
-    color: var(--md-sys-color-primary);
-    margin-bottom: 4px;
+    color: var(--color-primary);
+    margin-bottom: 0.25em;
+    font-family: var(--font-ui);
 }
 .reader-header-subtitle {
-    font-size: 16px;
-    color: var(--md-sys-color-on-surface-variant);
+    font-size: 1em;
+    color: var(--color-on-surface);
+    font-family: var(--font-ui);
 }
 
 .reader-row {
     display: flex;
     flex-direction: row;
     width: 100%;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--md-sys-color-surface-variant);
-    padding-bottom: 8px;
-    min-height: 40px; /* גובה שורה אחיד */
-    gap: 16px; /* רווח בין הטורים והעמודה האמצעית */
+    margin-bottom: 0.75em;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-outline) 25%, transparent);
+    padding-bottom: 0.5em;
+    min-height: 2.5em;
+    gap: 1em;
 }
 
 /* טורים בסיסיים - יישור לשני הכיוונים (כמו justify) */
 .stam-col, .nikud-col {
     flex: 1;
-    padding: 0 8px; /* הוקטן מ-16 */
+    padding: 0 0.5em;
     display: flex;
     align-items: baseline;
-    line-height: var(--line-spacing, 1.6);
-    justify-content: space-between; /* יישור לשני הכיוונים - כמו בכתב סת"ם */
-    gap: 0.15em; /* רווח מינימלי בין מילים */
+    line-height: var(--line-spacing, 1.3);
+    justify-content: space-between;
+    gap: 0.15em;
 }
 
-/* עמודה אמצעית - מספרי פרק/פסוק ושמות עליות */
+/* עמודה אמצעית - מספרי פרק/פסוק ושמות עליות (בגופן סת"ם של הספר) */
 .markers-col {
-    flex: 0 0 70px;
+    flex: 0 0 4.5em;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: var(--nikud-font-family);
+    font-family: var(--font-nikud);
     line-height: 1.15;
-    color: var(--md-sys-color-on-surface-variant);
+    color: var(--color-on-surface);
     user-select: none;
     direction: rtl;
 }
@@ -84,7 +86,7 @@
 
 .marker-ref-chapter {
     font-weight: bold;
-    color: var(--md-sys-color-on-surface);
+    color: var(--color-on-surface);
 }
 
 .marker-ref-verse {
@@ -94,7 +96,7 @@
 .marker-aliya {
     font-size: 0.85em;
     font-weight: bold;
-    color: var(--md-sys-color-primary);
+    color: var(--color-primary);
     text-align: center;
     white-space: nowrap;
     direction: rtl;
@@ -107,9 +109,7 @@
     gap: 0.4em;
 }
 
-/* שורה "חלקית" - יצאה בגלל מילה שלא נכנסה לשורה הבאה.
-   מציג עם רווחים אחידים בין מילים במקום פיזור על כל הרוחב (justify),
-   כדי למנוע רווחים מוזרים בין מעט מילים. */
+/* שורה "חלקית" - יצאה בגלל מילה שלא נכנסה לשורה הבאה. */
 .layout-partial .stam-col,
 .layout-partial .nikud-col {
     justify-content: flex-start;
@@ -118,23 +118,23 @@
 
 
 .stam-col {
-    font-family: var(--stam-font-family);
+    font-family: var(--font-stam);
     font-size: var(--stam-font-size);
     color: var(--stam-font-color);
 }
 
 .nikud-col {
-    font-family: var(--nikud-font-family);
+    font-family: var(--font-nikud);
     font-size: var(--nikud-font-size);
     color: var(--nikud-font-color);
-    border-right: 2px solid var(--md-sys-color-surface-variant); 
+    border-right: 2px solid color-mix(in srgb, var(--color-outline) 25%, transparent);
 }
 
 /* בלוקים של טקסט בתוך השורה (כדי לאפשר רווחים ביניהם) */
 .stam-text-block {
     display: flex;
     flex: 1;
-    justify-content: space-between; /* פיזור מילים אחיד (Justify) */
+    justify-content: space-between;
     align-items: baseline;
 }
 
@@ -157,28 +157,24 @@
    הלכות עימוד (פתוחה, סתומה, שירה)
 --------------------------------- */
 
-/* פרשה פתוחה (Petucha) - הטקסט נחתך, אין מתיחות ואין פיזור */
 .layout-petucha .stam-text-block {
-    flex: 0 1 auto; /* גודל לפי הטקסט, לא נמתח לכל השורה */
+    flex: 0 1 auto;
     justify-content: flex-start;
-    gap: 0.4em; /* רווח קבוע בין מילים */
+    gap: 0.4em;
 }
 
-/* פרשה סתומה (Setuma) - רווח מדויק של 9 אותיות באמצע */
 .halachic-spacer.spacer-setuma {
     display: inline-block;
-    width: 9ch; /* 9 תווים של הפונט הנוכחי */
+    width: 9ch;
     flex-shrink: 0;
 }
 
-/* שירת האזינו (Shira Hazinu) - שני טורים עם רווח קבוע ביניהם */
 .layout-shira_hazinu .halachic-spacer.spacer-shira_hazinu {
     display: inline-block;
-    width: 15%; /* רווח יחסי יפה באמצע */
+    width: 15%;
     flex-shrink: 0;
 }
 
-/* שירת הים (Shira Yam) - רווח רחב וגמיש יותר בין גושי הטקסט */
 .layout-shira_yam .halachic-spacer.spacer-shira_yam {
     flex-grow: 1;
     min-width: 4ch;

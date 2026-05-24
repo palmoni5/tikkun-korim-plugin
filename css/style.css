@@ -27,23 +27,47 @@
     font-style: normal;
 }
 
-/* משתני בסיס ומשתני Material 3 שיעודכנו דינמית מה-JS */
+/* משתני בסיס: צבעים, גופנים, צורות - לפי DESIGN_GUIDE של אוצריא */
 :root {
-    /* Fallback MD3 Colors (Light Mode by default) */
-    --md-sys-color-primary: #006874;
-    --md-sys-color-on-primary: #ffffff;
-    --md-sys-color-surface: #fbfdfd;
-    --md-sys-color-on-surface: #191c1d;
-    --md-sys-color-surface-variant: #dbe4e6;
-    --md-sys-color-on-surface-variant: #3f484a;
+    /* --- Color roles (ייוחלפו על-ידי applyTheme מתוך theme.colorScheme) --- */
+    --color-primary:    #006874;
+    --color-on-primary: #ffffff;
+    --color-secondary:    #4a6267;
+    --color-on-secondary: #ffffff;
+    --color-surface:    #fbfdfd;
+    --color-on-surface: #191c1d;
+    --color-surface-container-highest: #dbe4e6;
+    --color-error:    #B3261E;
+    --color-on-error: #ffffff;
+    --color-outline:  #3f484a;
+    --color-primary-subtle:   rgba(0, 104, 116, 0.12);
+    --color-secondary-subtle: rgba(74, 98, 103, 0.12);
 
-    /* משתני הגדרות שיעודכנו ע"י העדפות משתמש */
-    --stam-font-family: 'Ashkenazi-Stam', sans-serif;
-    --nikud-font-family: 'Standard-Nikud', sans-serif;
-    --stam-font-size: 28px;
-    --nikud-font-size: 24px;
-    --stam-font-color: var(--md-sys-color-on-surface);
-    --nikud-font-color: var(--md-sys-color-on-surface);
+    /* --- Typography --- */
+    --font-main:      'FrankRuhlCLM', 'David', serif;
+    --font-ui:        system-ui, -apple-system, 'Segoe UI', 'Rubik', sans-serif;
+    --font-size-base: 18px;
+    --line-height:    1.5;
+
+    /* --- Shape --- */
+    --radius-sm:  8px;
+    --radius-md:  12px;
+    --radius-lg:  16px;
+    --radius-pill: 999px;
+
+    /* משתני התוסף (גופני סת"ם/ניקוד וגדלים שיעודכנו ע"י המשתמש) */
+    --font-stam:  'Ashkenazi-Stam', serif;
+    --font-nikud: 'Standard-Nikud', serif;
+    --stam-font-size: 1.6em;
+    --nikud-font-size: 1.35em;
+    --stam-font-color: var(--color-on-surface);
+    --nikud-font-color: var(--color-on-surface);
+
+    /* שכבות / shadows / scrim (לא צבעי תוכן) */
+    --shadow-card:    color-mix(in srgb, black 5%,  transparent);
+    --shadow-dialog:  color-mix(in srgb, black 14%, transparent);
+    --shadow-overlay: color-mix(in srgb, black 30%, transparent);
+    --color-scrim:    color-mix(in srgb, black 40%, transparent);
 }
 
 /* איפוס ועיצוב בסיסי */
@@ -54,9 +78,9 @@
 }
 
 body {
-    background-color: var(--md-sys-color-surface);
-    color: var(--md-sys-color-on-surface);
-    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-ui);
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -64,12 +88,12 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Top App Bar - MD3 Style */
+/* Top App Bar */
 .md-top-app-bar {
-    background-color: var(--md-sys-color-surface);
-    color: var(--md-sys-color-on-surface);
-    border-bottom: 1px solid var(--md-sys-color-surface-variant);
-    padding: 12px 16px;
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    border-bottom: 1px solid var(--color-outline);
+    padding: 0.75em 1em;
     z-index: 10;
 }
 
@@ -82,7 +106,7 @@ body {
 }
 
 .md-top-app-bar__title {
-    font-size: 22px;
+    font-size: 1.375rem;
     font-weight: 500;
 }
 
@@ -91,8 +115,8 @@ body {
     border: none;
     color: inherit;
     cursor: pointer;
-    border-radius: 50%;
-    padding: 8px;
+    border-radius: var(--radius-pill);
+    padding: 0.5em;
     transition: background-color 0.2s ease;
     display: flex;
     align-items: center;
@@ -100,11 +124,11 @@ body {
 }
 
 .md-icon-button:hover {
-    background-color: var(--md-sys-color-surface-variant);
+    background-color: var(--color-surface-container-highest);
 }
 
 .reader-wrapper {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 1em;
 }

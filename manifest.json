@@ -7,7 +7,7 @@
   "author": "פלמנמוני",
   "stability": "experimental",
   "entrypoint": "index.html",
-  "minAppVersion": "0.5.0",
+  "minAppVersion": "0.9.91",
   "sdkVersion": "1.x",
   "permissions": [
     "app.info.read",
@@ -16,7 +16,8 @@
     "plugin.storage.read",
     "plugin.storage.write",
     "library.books.read",
-    "library.content.read"
+    "library.content.read",
+    "events.subscribe:theme.changed"
   ],
   "network": {
     "enabled": false,

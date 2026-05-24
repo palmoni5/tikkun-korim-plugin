@@ -54,14 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inputs.zoom) inputs.zoom.value = AppState.settings.zoom || 100;
         if (inputs.nusach) inputs.nusach.value = AppState.settings.nusach || 'ashkenaz';
         if (inputs.nusachLand) inputs.nusachLand.value = AppState.settings.nusachLand || 'israel';
-        if (inputs.lineSpacing) inputs.lineSpacing.value = AppState.settings.lineSpacing || 1.6;
+        if (inputs.lineSpacing) inputs.lineSpacing.value = AppState.settings.lineSpacing || 1.3;
 
         document.getElementById('stam-size-val').innerText = AppState.settings.stamFontSize;
         document.getElementById('nikud-size-val').innerText = AppState.settings.nikudFontSize;
         const zoomVal = document.getElementById('zoom-val');
         if (zoomVal) zoomVal.innerText = AppState.settings.zoom || 100;
         const lineSpacingVal = document.getElementById('line-spacing-val');
-        if (lineSpacingVal) lineSpacingVal.innerText = AppState.settings.lineSpacing || 1.6;
+        if (lineSpacingVal) lineSpacingVal.innerText = AppState.settings.lineSpacing || 1.3;
     }
 
     // פונקציה לעדכון ושמירה ברגע שיש שינוי באחד האלמנטים
