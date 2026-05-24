@@ -47,11 +47,19 @@ const TANACH_KETUVIM = [
 const TANACH_SECTIONS = {
     torah: { name: 'תורה', books: null }, // מטופל בנפרד
     neviim: { name: 'נביאים', books: TANACH_NEVIIM },
-    ketuvim: { name: 'כתובים', books: TANACH_KETUVIM }
+    ketuvim: { name: 'כתובים', books: TANACH_KETUVIM },
+    haftarot: { name: 'הפטרות', books: null } // מטופל בנפרד מול HAFTAROT_LIST
 };
+
+// מיפוי שם ספר נביא/כתוב (כפי שמופיע ב-HAFTAROT_LIST) למבנה הספר ב-TANACH_NEVIIM/KETUVIM
+function findTanachBookByName(name) {
+    const all = [...TANACH_NEVIIM, ...TANACH_KETUVIM];
+    return all.find(b => b.name === name);
+}
 
 if (typeof window !== 'undefined') {
     window.TANACH_SECTIONS = TANACH_SECTIONS;
     window.TANACH_NEVIIM = TANACH_NEVIIM;
     window.TANACH_KETUVIM = TANACH_KETUVIM;
+    window.findTanachBookByName = findTanachBookByName;
 }

@@ -109,6 +109,7 @@
             <select id="select-parasha" class="md-select"></select>
             <select id="select-aliya" class="md-select" title="עליה"></select>
             <select id="select-chapter" class="md-select" style="display:none;" title="פרק"></select>
+            <select id="select-haftarah" class="md-select" style="display:none;" title="הפטרה"></select>
         </div>
         <div class="nav-pagination">
             <button id="btn-prev-col" class="md-button md-button--outlined">עמוד קודם</button>
@@ -173,6 +174,16 @@
                 <label>זום תצוגה (<span id="zoom-val">100</span>%):</label>
                 <input type="range" id="setting-zoom" class="md-slider" min="50" max="200" step="5" value="100">
             </div>
+            <div class="setting-group">
+                <label>נוסח הפטרה:</label>
+                <select id="setting-nusach" class="md-select">
+                    <option value="ashkenaz">אשכנז</option>
+                    <option value="sephard">ספרד</option>
+                </select>
+            </div>
+            <div class="settings-disclaimer">
+                <strong>הבהרה:</strong> החישובים, החלוקה לעמודים והמרווחים בין המילים מבוצעים על-ידי אלגוריתם אוטומטי, ואינם בהכרח תואמים את כללי הסת"ם המדויקים או את חלוקת הספרים המסורתית. בכל ספק יש להיוועץ בסופר סת"ם.
+            </div>
         </div>
         <div class="md-dialog__actions">
             <button id="btn-close-settings" class="md-button md-button--text">סגור</button>
@@ -183,6 +194,7 @@
     <script src="js/special_layouts.js"></script>
     <script src="js/parasha_index.js"></script>
     <script src="js/aliyot_index.js"></script>
+    <script src="js/haftarot_index.js"></script>
     <script src="js/tanach_structure.js"></script>
     <script src="js/page_layout_engine.js"></script>
     <script src="js/app.js"></script>

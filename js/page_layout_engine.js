@@ -153,7 +153,7 @@ function paginatePage(pageObj, maxLines, baseMaxCharsPerLine = 36) {
     // חישוב maxChars מאוזן עבור הסגמנט הנוכחי - מחושב מחדש אחרי כל petucha,
     // כי כל "פסקה" היא יחידה עצמאית של איזון.
     let segmentTokens = [];
-    let currentMaxChars = baseMaxCharsPerLine;
+    let maxCharsPerLine = baseMaxCharsPerLine;
 
     // מצא segment - מקבץ אסימונים שמסתיים ב-petucha או בסוף עמוד.
     const recomputeMaxCharsForUpcomingSegment = (startIdx) => {
@@ -165,7 +165,7 @@ function paginatePage(pageObj, maxLines, baseMaxCharsPerLine = 36) {
         return computeBalancedMaxChars(seg, baseMaxCharsPerLine);
     };
 
-    currentMaxChars = recomputeMaxCharsForUpcomingSegment(0);
+    maxCharsPerLine = recomputeMaxCharsForUpcomingSegment(0);
 
     const flushLine = () => {
         if (currentLine.length > 0) {
@@ -189,7 +189,7 @@ function paginatePage(pageObj, maxLines, baseMaxCharsPerLine = 36) {
                 lines[lines.length - 1].layout = 'petucha';
             }
             // חישוב מחדש של maxChars לסגמנט החדש
-            currentMaxChars = recomputeMaxCharsForUpcomingSegment(i + 1);
+            maxCharsPerLine = recomputeMaxCharsForUpcomingSegment(i + 1);
             continue;
         }
 
@@ -198,7 +198,7 @@ function paginatePage(pageObj, maxLines, baseMaxCharsPerLine = 36) {
             currentLine.push({ stam: '{GAP}', nikud: '{GAP}' });
             lineLayout = 'setuma';
             charCount += 9;
-            if (charCount >= currentMaxChars) {
+            if (charCount >= maxCharsPerLine) {
                 flushLine();
             }
             continue;
@@ -224,7 +224,7 @@ function paginatePage(pageObj, maxLines, baseMaxCharsPerLine = 36) {
         charCount += wordStam.length + 1;
 
         // חיתוך שורה אם נגיע למקסימום תווים
-        if (charCount >= currentMaxChars) {
+        if (charCount >= maxCharsPerLine) {
             flushLine();
         }
     }
@@ -246,12 +246,32 @@ function paginatePage(pageObj, maxLines, baseMaxCharsPerLine = 36) {
  * כל שורה מוחזרת עם startTokenIdx - האינדקס של הטוקן הראשון שתרם לשורה.
  * זה מאפשר מיפוי מדויק בין tokens לשורות לצורך ניווט.
  */
+// בודק כמה תווים נשארו בסגמנט הנוכחי (מאינדקס fromIdx ועד petucha/book_break הבא).
+// בשימוש כ-look-ahead: אם השאריות לא יצדיקו שורה מלאה, נאפשר חריגה קלה בשורה הנוכחית
+// במקום להוריד את המילה לשורה משלה (שתיראה דלילה).
+function lookaheadCharsUntilBoundary(tokens, fromIdx) {
+    let chars = 0;
+    for (let j = fromIdx; j < tokens.length; j++) {
+        const t = tokens[j];
+        if (t.type === 'petucha' || t.type === 'book_break') break;
+        if (t.type === 'word') {
+            chars += t.value.replace(/[֑-ׇ]/g, '').length + 1;
+        } else if (t.type === 'setuma') {
+            chars += 9;
+        }
+    }
+    return chars;
+}
+
 function paginateAllTokens(tokens, maxCharsPerLine = 36) {
     const lines = [];
     let currentLine = [];
     let currentLineStartTokenIdx = -1; // הטוקן הראשון של השורה הנוכחית
     let charCount = 0;
     let lineLayout = 'regular';
+    // סף החלטה: אם השאריות בסגמנט (מהטוקן הבא ועד petucha) קטנות מסף זה,
+    // לא נחתוך שורה - נאפשר חריגה קלה כדי שלא תיווצר שורה אחרונה דלילה.
+    const NEW_LINE_THRESHOLD = maxCharsPerLine * 0.5;
     // markers ממתינים - יוצמדו לשורה הבאה שתכלול מילה
     let pendingChapterNum = null;
     let pendingVerseNum = null;
@@ -364,17 +384,19 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             const ketivStam = ketiv.replace(/[֑-ׇ]/g, '');
             const qereStam = qere.replace(/[֑-ׇ]/g, '');
             if (!ketivStam && !qereStam) continue;
+            const baseLen = (ketivStam || qereStam).length + 1;
+            // אם המילה לא נכנסת - לחתוך, אבל רק אם נשאר מספיק טקסט שיצדיק שורה חדשה.
+            // אחרת (מילים אחרונות) נאפשר חריגה קלה כדי לא ליצור שורה דלילה.
+            if (currentLine.length > 0 && charCount + baseLen > maxCharsPerLine) {
+                const remaining = lookaheadCharsUntilBoundary(tokens, i);
+                if (remaining >= NEW_LINE_THRESHOLD) {
+                    flushLine();
+                }
+            }
             if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;
             if (typeof consumePendingMarkers === 'function') consumePendingMarkers();
-            // sTam = רק כתיב (אם יש), nikud = רק קרי (אם יש).
-            // אם stam ריק -> ה-renderer ידלג על stam של המילה הזו (קרי ולא כתיב).
-            // אם nikud ריק -> ה-renderer ידלג על nikud (כתיב ולא קרי).
             currentLine.push({ stam: ketivStam, nikud: qere });
-            const baseLen = (ketivStam || qereStam).length;
-            charCount += baseLen + 1;
-            if (charCount >= maxCharsPerLine) {
-                flushLine();
-            }
+            charCount += baseLen;
             continue;
         }
 
@@ -389,13 +411,19 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             continue;
         }
 
+        // אם המילה לא נכנסת - לחתוך, אבל רק אם נשאר מספיק טקסט שיצדיק שורה חדשה.
+        // אחרת (מילים אחרונות) נאפשר חריגה קלה כדי לא ליצור שורה דלילה.
+        const wordLen = wordStam.length + 1;
+        if (currentLine.length > 0 && charCount + wordLen > maxCharsPerLine) {
+            const remaining = lookaheadCharsUntilBoundary(tokens, i);
+            if (remaining >= NEW_LINE_THRESHOLD) {
+                flushLine();
+            }
+        }
         if (currentLineStartTokenIdx < 0) currentLineStartTokenIdx = i;
         consumePendingMarkers();
         currentLine.push({ stam: wordStam, nikud: word });
-        charCount += wordStam.length + 1;
-        if (charCount >= maxCharsPerLine) {
-            flushLine();
-        }
+        charCount += wordLen;
     }
 
     if (currentLine.length > 0) {

@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
         nikudFontSize: document.getElementById('setting-nikud-size'),
         hideStam: document.getElementById('setting-hide-stam'),
         hideNikud: document.getElementById('setting-hide-nikud'),
-        zoom: document.getElementById('setting-zoom')
+        zoom: document.getElementById('setting-zoom'),
+        nusach: document.getElementById('setting-nusach')
     };
 
     // פונקציה שמסנכרנת את ערכי ה-DOM מה-State
@@ -36,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.hideStam.checked = AppState.settings.hideStam;
         inputs.hideNikud.checked = AppState.settings.hideNikud;
         if (inputs.zoom) inputs.zoom.value = AppState.settings.zoom || 100;
+        if (inputs.nusach) inputs.nusach.value = AppState.settings.nusach || 'ashkenaz';
 
         document.getElementById('stam-size-val').innerText = AppState.settings.stamFontSize;
         document.getElementById('nikud-size-val').innerText = AppState.settings.nikudFontSize;
@@ -71,6 +73,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const v = parseInt(e.target.value);
             document.getElementById('zoom-val').innerText = v;
             handleSettingChange('zoom', v);
+        });
+    }
+    if (inputs.nusach) {
+        inputs.nusach.addEventListener('change', (e) => {
+            AppState.settings.nusach = e.target.value;
+            saveSettingsToStorage();
+            // אם כעת מציגים הפטרה - טען מחדש בנוסח החדש
+            if (currentNavState && currentNavState.section === 'haftarot' && typeof loadAndDisplayHaftarah === 'function') {
+                loadAndDisplayHaftarah();
+            }
         });
     }
 });

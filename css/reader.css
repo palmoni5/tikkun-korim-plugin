@@ -11,6 +11,25 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
+/* כותרת בראש העמוד (לדוגמה: הפטרה - שם + ספר ופסוקים) */
+.reader-header {
+    max-width: 1250px;
+    margin: 0 auto 12px;
+    padding: 16px 12px;
+    text-align: center;
+    direction: rtl;
+}
+.reader-header-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--md-sys-color-primary);
+    margin-bottom: 4px;
+}
+.reader-header-subtitle {
+    font-size: 16px;
+    color: var(--md-sys-color-on-surface-variant);
+}
+
 .reader-row {
     display: flex;
     flex-direction: row;
@@ -78,6 +97,7 @@
     justify-content: flex-start;
     gap: 0.4em;
 }
+
 
 .stam-col {
     font-family: var(--stam-font-family);

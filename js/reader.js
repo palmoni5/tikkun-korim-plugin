@@ -132,6 +132,25 @@ function renderColumnUI(columnLines) {
     const container = document.getElementById('reader-container');
     container.innerHTML = '';
 
+    // כותרת אופציונלית (משמשת בהפטרות - שם הפטרה + ספר ופסוקים)
+    if (window._currentHeader) {
+        const headerEl = document.createElement('div');
+        headerEl.className = 'reader-header';
+        if (window._currentHeader.title) {
+            const t = document.createElement('div');
+            t.className = 'reader-header-title';
+            t.textContent = window._currentHeader.title;
+            headerEl.appendChild(t);
+        }
+        if (window._currentHeader.subtitle) {
+            const s = document.createElement('div');
+            s.className = 'reader-header-subtitle';
+            s.textContent = window._currentHeader.subtitle;
+            headerEl.appendChild(s);
+        }
+        container.appendChild(headerEl);
+    }
+
     const page = document.createElement('div');
     page.className = 'reader-page';
 

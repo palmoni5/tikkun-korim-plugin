@@ -8,12 +8,34 @@
     padding: 8px 16px;
     background-color: var(--md-sys-color-surface);
     border-bottom: 1px solid var(--md-sys-color-surface-variant);
+    flex-wrap: wrap; /* אפשור גלישה לשורה הבאה עבור תצוגת ההפטרה */
+    row-gap: 8px;
 }
 
 .nav-selectors, .nav-pagination {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+/* תצוגת הפטרה לפרשה הנוכחית */
+.haftarah-display {
+    flex-basis: 100%;
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+    direction: rtl;
+    text-align: center;
+    padding: 4px 0 0;
+}
+.haftarah-display:empty {
+    display: none;
+}
+.haftarah-display .haft-label {
+    font-weight: 600;
+    color: var(--md-sys-color-primary);
+}
+.haftarah-display .haft-text {
+    color: var(--md-sys-color-on-surface);
 }
 
 /* כפתורים */
@@ -139,4 +161,20 @@
 .md-slider {
     width: 100%;
     accent-color: var(--md-sys-color-primary);
+}
+
+/* הבהרה בתחתית דיאלוג ההגדרות */
+.settings-disclaimer {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 12px;
+    line-height: 1.5;
+    direction: rtl;
+    text-align: right;
+}
+.settings-disclaimer strong {
+    color: var(--md-sys-color-primary);
 }

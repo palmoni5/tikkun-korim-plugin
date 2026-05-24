@@ -10,7 +10,8 @@ const AppState = {
         nikudColor: '',
         hideStam: false,
         hideNikud: false,
-        zoom: 100 // אחוזי זום של התצוגה (50-200)
+        zoom: 100, // אחוזי זום של התצוגה (50-200)
+        nusach: 'ashkenaz' // נוסח הפטרה: 'ashkenaz' / 'sephard'
     }
 };
 
