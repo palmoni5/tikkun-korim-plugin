@@ -472,6 +472,11 @@ function cleanRawText(rawText) {
     decoder.innerHTML = rawText;
     rawText = decoder.value;
 
+    // זיהוי "רווח ויזואלי" בטקסט אוצריא: רצף של 4+ NBSP (U+00A0) מסמן
+    // הפסקה בין חלקי פסוק (משמש בעיקר בשירות כמו האזינו, הים). מסומנים
+    // כ-SEGBREAKMARK שיתורגם ל-token segment_break ב-tokenizeText.
+    rawText = rawText.replace(/ {4,}/g, ' SEGBREAKMARK ');
+
     // כתיב/קרי: (כתיב) [קרי] -> markers מיוחדים שלא מתפרקים
     // U+E010 = start, U+E011 = middle, U+E012 = end
     rawText = rawText.replace(
@@ -540,8 +545,17 @@ async function fetchFullBook(bookId) {
     return rawText;
 }
 
-// טעון את כל ספרי התורה ועיבוד מלא
+// עזר: yield לאירועי דפדפן (לחיצות, scroll וכו') בין שלבי עיבוד כבדים.
+// בלעדיו, ה-event loop חסום עד סוף הפונקציה והתפריטים נראים תקועים.
+function yieldToUi() {
+    return new Promise(r => setTimeout(r, 0));
+}
+
+// טעון את כל ספרי התורה ועיבוד מלא.
+// משתמש ב-fetchRequestId הקיים (לא מגדיל אותו!) - כך שהקורא יוכל לוודא
+// שהתוצאה עדיין רלוונטית בלי שנפריע ל-counter שלו.
 async function loadAndProcessAll(methodId) {
+    const myRequestId = fetchRequestId; // לא ++; נצפה לערך הנוכחי
     document.getElementById('reader-container').innerHTML =
         '<div style="text-align:center; padding: 40px;">טוען...</div>';
     window._currentHeader = null;
@@ -554,27 +568,47 @@ async function loadAndProcessAll(methodId) {
             return text;
         }))
     );
+    if (myRequestId !== fetchRequestId) return null;
 
-    await new Promise(r => setTimeout(r, 10));
+    await yieldToUi();
 
-    // צירוף עם marker מפריד בין חומשים - 4 שורות ריקות בכתב סת"ם אמיתי
-    const combined = allRaw.join(' BOOKBREAKMARKER ');
-    const cleaned = cleanRawText(combined);
-    const tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+    // מעבד כל חומש בנפרד כדי לסמן בו קטעים מיוחדים (שירות) לפי שם הספר.
+    // yield אחרי כל ספר כדי לא לחסום את ה-UI.
+    const tokens = [];
+    for (let i = 0; i < BOOKS_ORDER.length; i++) {
+        const bookId = BOOKS_ORDER[i];
+        const bookName = TORAH_STRUCTURE[bookId].name;
+        const cleaned = cleanRawText(allRaw[i]);
+        let bookTokens = window.PageLayoutEngine.tokenizeText(cleaned);
+        if (window.SpecialLayouts) {
+            bookTokens = window.SpecialLayouts.markSpecialSections(bookTokens, bookName);
+        }
+        if (i > 0) tokens.push({ type: 'book_break' });
+        tokens.push(...bookTokens);
+        await yieldToUi();
+        if (myRequestId !== fetchRequestId) return null;
+    }
 
-    // מיפוי תחילת כל חומש ב-tokens לפי book_break tokens
     const bookStartTokenIdx = computeBookStartIndices(tokens);
     console.log(`[tikkun] book starts:`, bookStartTokenIdx);
 
-    // שיטה מיוחדת "עמוד אחד ארוך" - כל התורה כעמוד אחד, ללא חלוקה
     const isSinglePage = methodId === 'single_page';
     const layout = isSinglePage ? null : window.TORAH_LAYOUTS[methodId];
     const maxLines = isSinglePage ? Infinity : layout.linesPerPage;
+
+    await yieldToUi();
+    if (myRequestId !== fetchRequestId) return null;
+
     const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
     console.log(`[tikkun] lines: ${allLines.length}, pages: ~${isSinglePage ? 1 : Math.ceil(allLines.length / maxLines)}`);
 
-    // הצמדת שם העליה לכל שורה שמתחילה בה עליה (כדי שיוצג בעמודה האמצעית)
+    await yieldToUi();
+    if (myRequestId !== fetchRequestId) return null;
+
     annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx);
+
+    await yieldToUi();
+    if (myRequestId !== fetchRequestId) return null;
 
     const pages = [];
     if (isSinglePage) {
@@ -712,7 +746,10 @@ async function loadAndDisplayTanachBook() {
 
         // ניקוי - cleanRawText כבר ממיר h2 ל-CHAPTERMARK ו-(אות) ל-VERSEMARK
         const cleaned = cleanRawText(rawText);
-        const tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+        let tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+        if (window.SpecialLayouts) {
+            tokens = window.SpecialLayouts.markSpecialSections(tokens, book.name);
+        }
         const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
 
         // איתור באיזו שורה מתחיל כל פרק - לפי firstChapterNum של השורות
@@ -745,13 +782,28 @@ async function loadAndDisplayTanachBook() {
 
 function scrollToChapter(chapterNum) {
     const map = window._currentTanachChapterMap;
-    if (!map) return;
-    const lineIdx = map[chapterNum];
-    if (typeof lineIdx !== 'number') return;
-    const rows = document.querySelectorAll('.reader-row');
-    if (rows[lineIdx]) {
-        rows[lineIdx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!map) {
+        console.warn('[tikkun] no chapter map');
+        return;
     }
+    const lineIdx = map[chapterNum];
+    if (typeof lineIdx !== 'number') {
+        console.warn('[tikkun] chapter', chapterNum, 'not in map', map);
+        return;
+    }
+    const container = document.getElementById('reader-container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.reader-row');
+    if (!rows[lineIdx]) {
+        console.warn('[tikkun] row', lineIdx, 'not found, total rows:', rows.length);
+        return;
+    }
+    // חישוב מיקום הגלילה באמצעות getBoundingClientRect (יותר אמין
+    // משימוש ב-offsetTop, שעלול להתבסס על offsetParent שונה).
+    const rowRect = rows[lineIdx].getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const scrollTarget = container.scrollTop + (rowRect.top - containerRect.top);
+    container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
 }
 
 // מיפוי bookId -> אינדקס תחילתו בtokens
@@ -815,8 +867,9 @@ async function navigateToCurrentParasha() {
     const myRequestId = ++fetchRequestId;
 
     if (!processedAll) {
-        await loadAndProcessAll(currentNavState.methodId);
+        const result = await loadAndProcessAll(currentNavState.methodId);
         if (myRequestId !== fetchRequestId) return;
+        if (!result) return; // טעינה הופסקה בידי בקשה מאוחרת
     }
 
     const loc = findPageForParasha(currentNavState.parashaName);
@@ -1134,7 +1187,10 @@ async function loadTanachBookByName(bookName, requestId) {
         }
     }
     const cleaned = cleanRawText(rawText);
-    const tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+    let tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+    if (window.SpecialLayouts) {
+        tokens = window.SpecialLayouts.markSpecialSections(tokens, book.name);
+    }
     const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
     const chapterToLineIdx = {};
     for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
@@ -1268,7 +1324,10 @@ async function loadTorahBookByName(bookHeName, requestId) {
     const rawText = await fetchFullBook(bookId);
     if (requestId != null && requestId !== fetchRequestId) return null;
     const cleaned = cleanRawText(rawText);
-    const tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+    let tokens = window.PageLayoutEngine.tokenizeText(cleaned);
+    if (window.SpecialLayouts) {
+        tokens = window.SpecialLayouts.markSpecialSections(tokens, bookHeName);
+    }
     const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
     const processed = { tokens, allLines };
     TorahBookCache[bookId + '_processed'] = processed;

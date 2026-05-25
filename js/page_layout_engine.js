@@ -36,6 +36,7 @@ function tokenizeText(rawText) {
         .replace(/BOOKBREAKMARKER/g, ' BOOKBREAK ')
         .replace(/CHAPTERMARK(\d+)MARK/g, ' CHAPTER$1 ')
         .replace(/VERSEMARK(\d+)MARK/g, ' VERSE$1 ')
+        .replace(/SEGBREAKMARK/g, ' SEGBREAK ')
         .replace(/\s+/g, ' ')
         .trim();
 
@@ -49,6 +50,8 @@ function tokenizeText(rawText) {
             tokens.push({ type: 'setuma' });
         } else if (part === 'BOOKBREAK') {
             tokens.push({ type: 'book_break' });
+        } else if (part === 'SEGBREAK') {
+            tokens.push({ type: 'segment_break' });
         } else if (/^CHAPTER(\d+)$/.test(part)) {
             const num = parseInt(part.replace(/^CHAPTER/, ''));
             tokens.push({ type: 'chapter_break', chapterNum: num });
@@ -320,8 +323,151 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
         pendingVerseNum = null;
     };
 
+    const wordLenOf = (w) => w.stam === '{GAP}' ? 9 : visibleStamLen(w.stam || '') + 1;
+
+    // איזון ממוקד: אם השורה הנוכחית קצרה (פחות מ-40%), מנסים למזג אותה
+    // עם השורה הקודמת לשורה אחת — גם אם זה חורג מעט מהרוחב המקסימלי.
+    // המטרה: למנוע גם "מילה בודדת בשורה" וגם שורות קצרות שמתמתחות בגלל
+    // justify-content: space-between. אם החריגה גדולה מדי, פשוט שומרים את
+    // המצב הטבעי (לא מאזנים) ומשאירים את השורה הקצרה כפי שהיא.
+    const rebalanceLastSegmentBeforeBoundary = () => {
+        if (currentLine.length === 0) return;
+        let curChars = 0;
+        for (const w of currentLine) curChars += wordLenOf(w);
+        const SHORT_THRESHOLD = maxCharsPerLine * 0.4;
+        if (curChars >= SHORT_THRESHOLD) {
+            flushLine();
+            return;
+        }
+        if (lines.length === 0) {
+            flushLine();
+            return;
+        }
+        const prev = lines[lines.length - 1];
+        if (prev.layout !== 'regular' && prev.layout !== 'partial') {
+            flushLine();
+            return;
+        }
+        const allWords = [...prev.words, ...currentLine];
+        let totalChars = 0;
+        for (const w of allWords) totalChars += wordLenOf(w);
+
+        // אם הכל נכנס בשורה אחת (כולל חריגה של עד 20%) - מאחדים.
+        const SOFT_MAX = maxCharsPerLine * 1.20;
+        if (totalChars <= SOFT_MAX) {
+            prev.words = allWords;
+            prev.layout = 'regular';
+            currentLine = [];
+            currentLineStartTokenIdx = -1;
+            charCount = 0;
+            lineLayout = 'regular';
+            currentLineFirstVerse = null;
+            currentLineFirstChapter = null;
+            return;
+        }
+        // אחרת - לא מאזנים (כי כל פיצול יוצר שורה קצרה שתימתח). פשוט פולטים.
+        flushLine();
+    };
+
     for (let i = 0; i < tokens.length; i++) {
         const tok = tokens[i];
+
+        if (tok.type === 'special_start') {
+            // לפני שיוצרים שורות מיוחדות - מאזנים מחדש את "הסגמנט" של הטקסט
+            // הרגיל שמסתיים כאן: לוקחים את כל המילים מאז גבול הסגמנט האחרון
+            // (petucha / book_break / special section קודם / תחילת הקלט), ומחלקים
+            // אותם מחדש לשורות מאוזנות עם justify מלא, במקום להשאיר שורה אחרונה
+            // קצרה ("partial") שלא נראית טוב כשהקטע המיוחד מתחיל אחריה.
+            rebalanceLastSegmentBeforeBoundary();
+
+            // אסוף טוקנים עד special_end
+            const sectionTokens = [];
+            let j = i + 1;
+            while (j < tokens.length && tokens[j].type !== 'special_end') {
+                sectionTokens.push(tokens[j]);
+                j++;
+            }
+
+            // עדכן markers ממתינים על-ידי טוקנים בתוך הקטע
+            for (const st of sectionTokens) {
+                if (st.type === 'chapter_break') {
+                    pendingChapterNum = st.chapterNum;
+                    if (pendingVerseNum === null) pendingVerseNum = 1;
+                } else if (st.type === 'verse_break') {
+                    pendingVerseNum = st.verseNum;
+                }
+            }
+
+            // הפק שורות מיוחדות. context מעביר את הפסוק/הפרק שהיו פעילים
+            // ממש לפני special_start (למילים שלפני verse_break הבא בתוך הקטע).
+            const specialLines = (typeof window !== 'undefined' && window.SpecialLayouts)
+                ? window.SpecialLayouts.buildSpecialLines(sectionTokens, tok.section, {
+                    openingChapter: tok.openingChapter,
+                    openingVerse: tok.openingVerse
+                })
+                : [];
+
+            // לוג אבחוני זמני
+            console.log('[tikkun] special_start handled. section=', tok.section && tok.section.id,
+                'fromCh=', tok.section && tok.section.fromCh,
+                'fromVs=', tok.section && tok.section.fromVs,
+                'pendingChapterNum=', pendingChapterNum,
+                'specialLines.length=', specialLines.length);
+
+            if (specialLines.length > 0) {
+                // תמיד נסמן את שורת הפתיחה של קטע מיוחד בפרק שלה, כדי שהניווט
+                // יוכל למצוא אותה. ההצגה החזותית ("ה:א" וכד') מובחנת ב-renderer
+                // ע"י בדיקה אם זה באמת פרק חדש לעומת prev.ch.
+                const startCh = tok.openingChapter != null
+                    ? tok.openingChapter
+                    : (tok.section && tok.section.fromCh);
+                if (startCh != null && specialLines[0].firstChapterNum == null) {
+                    specialLines[0].firstChapterNum = startCh;
+                    console.log('[tikkun] set firstChapterNum on first special line:',
+                        startCh, 'section:', tok.section && tok.section.id);
+                } else {
+                    console.log('[tikkun] did NOT set firstChapterNum. startCh:', startCh,
+                        'firstChapterNum was:', specialLines[0].firstChapterNum);
+                }
+                // בקטעים מסוימים (מלכי כנען) - השורה הקודמת צריכה להיות
+                // מיושרת לשני הכיוונים (לא petucha/partial). בקטעים שיש לפניהם
+                // פתוחה בכתבי היד (שירת האזינו, שירת דבורה, שירת הים) -
+                // השורה נשארת פתוחה כפי שהיא.
+                if (tok.section && tok.section.justifyLineBefore && lines.length > 0) {
+                    const last = lines[lines.length - 1];
+                    if (last.layout === 'petucha' || last.layout === 'partial') {
+                        last.layout = 'regular';
+                    }
+                }
+
+                for (let k = 0; k < specialLines.length; k++) {
+                    specialLines[k].startTokenIdx = i;
+                    if (tok.section && tok.section.cssClass) {
+                        specialLines[k].cssClass = tok.section.cssClass;
+                    }
+                }
+                pendingChapterNum = null;
+                pendingVerseNum = null;
+                lines.push(...specialLines);
+            } else {
+                // fallback: עיבוד רגיל של הטוקנים בתוך הקטע
+                // (יסתכל על i במחזור הבא - לא נעשה כלום מיוחד)
+            }
+
+            i = j; // קפיצה לסוף הקטע (special_end)
+            continue;
+        }
+
+        if (tok.type === 'special_end') {
+            // טופל בתוך special_start - דלג
+            continue;
+        }
+
+        if (tok.type === 'segment_break') {
+            // רווח ויזואלי גדול בתוך פסוק - רלוונטי רק לקטעים מיוחדים
+            // (האזינו, הים וכד'). בטקסט רגיל פשוט מתעלמים.
+            continue;
+        }
 
         if (tok.type === 'petucha') {
             if (currentLine.length > 0) {

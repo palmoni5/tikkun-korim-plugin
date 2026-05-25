@@ -180,6 +180,257 @@
     min-width: 4ch;
 }
 
+/* ============================================================
+   פריסות מיוחדות: שירה (shira_parallel / shira_zigzag) ורשימה (list_pairs)
+   - כל שורה מיוחדת מקבלת את המבנה (right block | gap | left block)
+     בתוך כל אחד מטור הסת"ם וטור הניקוד, כך שמתקבלת פריסה דו-טורית
+     זהה במראה בין שני הטורים.
+   ============================================================ */
+
+.reader-row.layout-special {
+    align-items: stretch;
+}
+
+.layout-special .stam-col,
+.layout-special .nikud-col {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: baseline;
+    gap: 0;
+}
+
+.layout-special .special-block {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.15em;
+    min-width: 0;
+}
+
+/* בלוק ימני: מילים נצמדות לקצה הימני של השורה.
+   ב-RTL: flex-start = ימין, לכן זה מה שמדביק לקצה החיצוני. */
+.layout-special .special-block.right {
+    flex: 1 1 0;
+    justify-content: flex-start;
+    text-align: right;
+}
+
+/* בלוק שמאלי: מילים נצמדות לקצה השמאלי של השורה.
+   ב-RTL: flex-end = שמאל. */
+.layout-special .special-block.left {
+    flex: 1 1 0;
+    justify-content: flex-end;
+    text-align: left;
+}
+
+/* בלוק מרכזי (לשורות זיגזג יחידות): מרוכז */
+.layout-special .special-block.center {
+    flex: 0 1 auto;
+    justify-content: center;
+    text-align: center;
+}
+
+/* הרווח האמצעי בפריסת שירה מקבילה / רשימה */
+.layout-shira_parallel .special-gap,
+.layout-list_pairs .special-gap,
+.layout-list_alternating .special-gap {
+    flex: 0 0 12%;
+    min-width: 3ch;
+}
+
+/* פריסה רבועית: שני זוגות (ימני ושמאלי) עם רווח אמצעי ביניהם.
+   בכל זוג: name דוחף את עצמו לימין (קצה החיצוני) ו"אחד" דוחף את עצמו
+   לשמאל (לעבר הרווח). דוגמה ב-RTL מימין לשמאל:
+   [name1 ……… אחד1] [GAP 8%] [name2 ……… אחד2]. */
+.layout-list_quad .stam-col,
+.layout-list_quad .nikud-col {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0;
+}
+.layout-list_quad .quad-pair {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    min-width: 0;
+    gap: 0.5em;
+}
+.layout-list_quad .quad-gap {
+    flex: 0 0 8%;
+    min-width: 2ch;
+}
+.layout-list_quad .quad-cell {
+    display: flex;
+    align-items: baseline;
+    gap: 0.15em;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+/* רשימת חילופים (עשרת בני המן): השם הוא הבולט */
+.layout-list_alternating .special-block.right {
+    font-weight: 500;
+}
+
+/* פריסת מלכי כנען / שירת דבורה: כתב קטן יותר (0.7) כדי שכל הפסוק ייכנס
+   באותו טור ללא חיתוך. */
+.reader-row.special-compact .stam-col {
+    font-size: calc(var(--stam-font-size) * 0.7);
+}
+.reader-row.special-compact .nikud-col {
+    font-size: calc(var(--nikud-font-size) * 0.7);
+}
+.reader-row.special-compact .special-gap {
+    flex: 0 0 8%;
+    min-width: 2ch;
+}
+
+/* גרסת compact בינונית לשירת האזינו (0.8). */
+.reader-row.special-compact-md .stam-col {
+    font-size: calc(var(--stam-font-size) * 0.8);
+}
+.reader-row.special-compact-md .nikud-col {
+    font-size: calc(var(--nikud-font-size) * 0.8);
+}
+
+/* גרסת compact קלות יותר קטנה (0.75) - נשמרת לתאימות אחורית. */
+.reader-row.special-compact-md-light .stam-col {
+    font-size: calc(var(--stam-font-size) * 0.75);
+}
+.reader-row.special-compact-md-light .nikud-col {
+    font-size: calc(var(--nikud-font-size) * 0.75);
+}
+
+/* פריסת תאים גמישים (לשירת דוד): כל תא ייתפס לפי תוכנו,
+   ולא יהיה מוגבל ל-50%. הצדדים מתפזרים החוצה, ובלבד שיישמר
+   רווח מינימלי של 4em ביניהם. */
+.reader-row.special-flex-cells .manual-cell {
+    flex: 0 1 auto !important;
+    max-width: calc(100% - 4em - 1px) !important;
+}
+.reader-row.special-flex-cells .stam-col,
+.reader-row.special-flex-cells .nikud-col {
+    gap: 4em;
+    justify-content: space-between;
+}
+
+/* גרסת compact קצת יותר גדולה לשירת הים (0.85). */
+.reader-row.special-compact-lg .stam-col {
+    font-size: calc(var(--stam-font-size) * 0.85);
+}
+.reader-row.special-compact-lg .nikud-col {
+    font-size: calc(var(--nikud-font-size) * 0.85);
+}
+
+/* שורת זיגזג כפולה (DOUBLE): שני בלוקים 50%/50% ללא רווח אמצעי -
+   הצדדים מתפרשים לאמצע. הטקסט בתוכם נצמד לקצוות החיצוניים. */
+.layout-shira_zigzag.zigzag-double .special-block.right,
+.layout-shira_zigzag.zigzag-double .special-block.left {
+    flex: 0 0 50%;
+}
+.layout-shira_zigzag.zigzag-double .special-gap {
+    display: none;
+}
+
+/* שורת זיגזג משולשת (25/50/25): ימין צר / מרכז רחב / שמאל צר.
+   כל תא הוא flex container; המילים נצמדות לקצוות החיצוניים שלו. */
+.layout-shira_zigzag.zigzag-triple .stam-col,
+.layout-shira_zigzag.zigzag-triple .nikud-col {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0;
+}
+.layout-shira_zigzag.zigzag-triple .triple-right {
+    flex: 0 0 25%;
+    justify-content: flex-start; /* RTL: flex-start = ימין (קצה חיצוני) */
+}
+.layout-shira_zigzag.zigzag-triple .triple-center {
+    flex: 0 0 50%;
+    justify-content: center;
+}
+.layout-shira_zigzag.zigzag-triple .triple-left {
+    flex: 0 0 25%;
+    justify-content: flex-end;  /* RTL: flex-end = שמאל (קצה חיצוני) */
+}
+
+/* פריסה ידנית (zigzag-manual): כל תא עם רוחב משלו (מוחל inline-style),
+   והיישור נקבע לפי מיקום: ראשון=ימין, אחרון=שמאל, אמצעי=מרכז. */
+.layout-shira_zigzag.zigzag-manual .stam-col,
+.layout-shira_zigzag.zigzag-manual .nikud-col {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0;
+}
+.layout-shira_zigzag.zigzag-manual .manual-cell {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.15em;
+    min-width: 0;
+}
+.layout-shira_zigzag.zigzag-manual .manual-right {
+    justify-content: flex-start;  /* RTL: ימין (קצה חיצוני) */
+}
+.layout-shira_zigzag.zigzag-manual .manual-center {
+    justify-content: center;
+}
+.layout-shira_zigzag.zigzag-manual .manual-left {
+    justify-content: flex-end;    /* RTL: שמאל (קצה חיצוני) */
+}
+/* כאשר ה-section מסומן justify-cells - כל תא מתוח לשני הצדדים,
+   ויש רווח גדול ויזואלי בין הטורים. */
+.reader-row.layout-shira_zigzag.special-justify-cells .manual-cell {
+    justify-content: space-between !important;
+    gap: 0;
+}
+.reader-row.layout-shira_zigzag.special-justify-cells .stam-col,
+.reader-row.layout-shira_zigzag.special-justify-cells .nikud-col {
+    gap: 4em; /* רווח גדול בין שני הטורים בכל שורה */
+}
+.reader-row.layout-shira_zigzag.special-justify-cells .manual-cell:first-child {
+    padding-left: 1em;
+}
+.reader-row.layout-shira_zigzag.special-justify-cells .manual-cell:last-child {
+    padding-right: 1em;
+}
+/* תא יחיד ברוחב 100% (השורה הראשונה של שירת הים "אז ישיר משה..."):
+   מתוח לשני הצדדים עם רווחים שווים בין המילים. */
+.layout-shira_zigzag.zigzag-manual .manual-full {
+    justify-content: space-between;
+    gap: 0;
+}
+
+/* בשורת זיגזג יחידה - רווחים בצדדים שמרכזים את הבלוק */
+.layout-shira_zigzag.zigzag-single .special-spacer {
+    flex: 1 1 0;
+    min-width: 2ch;
+}
+
+/* רשימת זוגות (עשרת בני המן, מלכי כנען) - מינוף קוו מוצהר */
+.layout-list_pairs .special-block.right {
+    font-weight: 500;
+}
+
+/* שורה אחרונה של קטע מיוחד - לא לגעת ב-justify-content (השארה כברירת מחדל) */
+
+/* שם הקטע בעמודת המסמנים האמצעית (שורה ראשונה של קטע מיוחד) */
+.marker-section-name {
+    font-size: 0.8em;
+    font-weight: bold;
+    color: var(--color-primary);
+    margin-top: 0.25em;
+    text-align: center;
+    direction: rtl;
+    display: block;
+}
+
 /* אותיות מיוחדות */
 .letter-rabati {
     font-size: 1.25em;

@@ -9,7 +9,7 @@ const LINES_PER_COLUMN = 42;
 function dynamicPaginate(rawText) {
     const columns = [];
     let currentColumn = [];
-    
+
     // ניקוי סימני פיסוק זרים והכנה, פיצול לפי מילים.
     // נתייחס ל-(פ)/[פ]/{פ} כסימן לפתוחה, ול-(ס)/[ס]/{ס} כסתומה
     // (בטקסט מכון ממרא של אוצריא הסימן מופיע כסוגריים מסולסלים)
@@ -18,7 +18,7 @@ function dynamicPaginate(rawText) {
                          .replace(/\(ס\)|\[ס\]|\{ס\}/g, ' {SETUMA} ')
                          .split(/\s+/)
                          .filter(w => w.trim().length > 0);
-                         
+
     let currentLine = [];
     let charCount = 0;
     let layoutType = "regular"; // 'regular', 'petucha', 'setuma'
@@ -27,43 +27,37 @@ function dynamicPaginate(rawText) {
         const word = words[i];
 
         if (word === '{PETUCHA}') {
-            // פרשה פתוחה: סוגרים את השורה הנוכחית (אם יש בה משהו) ומגדירים אותה כפתוחה
             if (currentLine.length > 0) {
                 currentColumn.push({ words: currentLine, layout: 'petucha' });
                 currentLine = [];
                 charCount = 0;
                 checkColumnFull();
             } else if (currentColumn.length > 0) {
-                // אם השורה ריקה, השורה הקודמת נחשבת פתוחה
                 currentColumn[currentColumn.length - 1].layout = 'petucha';
             }
             continue;
         }
 
         if (word === '{SETUMA}') {
-            // פרשה סתומה: מוסיפים סמן מיוחד לתוך השורה ומגדירים את הפריסה
             currentLine.push({ nikud: '{GAP}', stam: '{GAP}' });
             layoutType = 'setuma';
-            charCount += 9; // הרווח שקול לכ-9 תווים
+            charCount += 9;
             continue;
         }
-        
-        // יצירת טקסט ללא ניקוד לטובת טור הסת"ם
-        const wordStam = word.replace(/[\u0591-\u05C7]/g, ''); 
+
+        const wordStam = word.replace(/[֑-ׇ]/g, '');
         currentLine.push({ stam: wordStam, nikud: word });
         charCount += wordStam.length + 1;
 
-        // חותכים שורה אם הגענו למקסימום תווים
         if (charCount >= MAX_CHARS_PER_LINE || i === words.length - 1) {
             currentColumn.push({ words: currentLine, layout: layoutType });
             currentLine = [];
             charCount = 0;
-            layoutType = 'regular'; // איפוס לשורה הבאה
+            layoutType = 'regular';
             checkColumnFull();
         }
     }
 
-    // הוספת שארית לשורה/עמודה
     if (currentLine.length > 0) {
         currentColumn.push({ words: currentLine, layout: layoutType });
     }
@@ -73,7 +67,6 @@ function dynamicPaginate(rawText) {
 
     return columns;
 
-    // פונקציית עזר לבדיקה אם העמודה התמלאה ב-42 שורות
     function checkColumnFull() {
         if (currentColumn.length === LINES_PER_COLUMN) {
             columns.push(currentColumn);
@@ -98,13 +91,6 @@ function numToHebrewGematria(n) {
 
 /**
  * בניית התוכן של עמודת המסמנים האמצעית עבור שורה.
- * prev = { ch, vs } - הפרק/פסוק האחרונים שהוצגו (לזיהוי "פרק חדש או לא").
- *
- * כללי הצגה:
- * - aliyaName: תמיד.
- * - פסוק (firstVerseNum): תמיד, אם השורה מתחילה בפסוק חדש.
- * - "פרק:פסוק" (במקום רק פסוק) רק כשבאמת מתחיל פרק חדש - שונה מהפרק שהיה לפני כן.
- *   כך מונעים "פרק חדש" מזויף בקריאות בין עליות שמתחילות באותו פרק.
  */
 function buildMarkerContent(lineObj, prev) {
     const wrapper = document.createElement('div');
@@ -140,14 +126,213 @@ function buildMarkerContent(lineObj, prev) {
 
 /**
  * הסתרת שם השם: י-ה-ו-ה -> י-ק-ו-ק (תוך שמירת ניקוד וטעמים).
- * הביטוי תופס י + (טעמים/ניקוד) + ה + (טעמים/ניקוד) + ו + (טעמים/ניקוד) + ה.
  */
 function maskDivineName(text) {
     if (!text) return text;
     return text.replace(
-        /י([֑-ׇֿ-]*)ה([֑-ׇֿ-]*)ו([֑-ׇֿ-]*)ה/g,
+        /י([֑-ׇֿ-]*)ה([֑-ׇֿ-]*)ו([֑-ׇֿ-]*)ה/g,
         'י$1ק$2ו$3ק'
     );
+}
+
+/**
+ * בונה אלמנט מילה בטור הסת"ם (כולל תמיכה בזעירא/רבתי).
+ */
+function buildStamWordEl(wordObj, maskName) {
+    const stamText = maskName ? maskDivineName(wordObj.stam) : wordObj.stam;
+    const wordEl = document.createElement('div');
+    wordEl.className = 'stam-word';
+    let inZeira = false;
+    let inRabati = false;
+    for (let i = 0; i < stamText.length; i++) {
+        const char = stamText[i];
+        const code = char.charCodeAt(0);
+        if (code === 0xE020) { inZeira = true; continue; }
+        if (code === 0xE021) { inZeira = false; continue; }
+        if (code === 0xE022) { inRabati = true; continue; }
+        if (code === 0xE023) { inRabati = false; continue; }
+        const charEl = document.createElement('span');
+        charEl.className = 'stam-letter';
+        if (inZeira) charEl.classList.add('letter-zeira');
+        if (inRabati) charEl.classList.add('letter-rabati');
+        charEl.innerText = char;
+        wordEl.appendChild(charEl);
+    }
+    return wordEl;
+}
+
+/**
+ * בונה span של מילת ניקוד (כולל זעירא/רבתי).
+ */
+function buildNikudWordEl(wordObj, maskName) {
+    const nikudText = maskName ? maskDivineName(wordObj.nikud) : wordObj.nikud;
+    const span = document.createElement('span');
+    const html = nikudText
+        .replace(/([\s\S]*?)/g, '<span class="letter-zeira">$1</span>')
+        .replace(/([\s\S]*?)/g, '<span class="letter-rabati">$1</span>');
+    span.innerHTML = html + ' ';
+    return span;
+}
+
+/**
+ * מוסיף רצף מילים לטור (stam או nikud). מוסיף text node רווח אחרי כל מילה.
+ */
+function appendWordsToCell(cell, words, maskName, isStam) {
+    for (const wordObj of words) {
+        if (wordObj.stam === '{GAP}') {
+            const spacer = document.createElement(isStam ? 'div' : 'span');
+            spacer.className = 'halachic-spacer spacer-setuma';
+            cell.appendChild(spacer);
+            continue;
+        }
+        if (isStam && wordObj.stam) {
+            cell.appendChild(buildStamWordEl(wordObj, maskName));
+            cell.appendChild(document.createTextNode(' '));
+        }
+        if (!isStam && wordObj.nikud) {
+            cell.appendChild(buildNikudWordEl(wordObj, maskName));
+        }
+    }
+}
+
+/**
+ * בונה שורה מיוחדת (שירה/רשימה) עם פריסה דו-טורית בכל אחד מטור הסת"ם וטור הניקוד.
+ *
+ * lineObj יכול לכלול:
+ *   - rightWords, leftWords (לפריסת shira_parallel ו-list_pairs)
+ *   - centerWords (לפריסת shira_zigzag שורה יחידה)
+ *   - zigzagRow: 'double' | 'single'
+ */
+function renderSpecialRow(lineObj, maskName, prev) {
+    const row = document.createElement('div');
+    row.className = `reader-row layout-${lineObj.layout} layout-special`;
+    if (lineObj.zigzagRow) {
+        row.classList.add(`zigzag-${lineObj.zigzagRow}`);
+    }
+    if (lineObj.cssClass) {
+        // תמיכה במספר classes מופרדים ברווח
+        for (const c of String(lineObj.cssClass).split(/\s+/)) {
+            if (c) row.classList.add('special-' + c);
+        }
+    }
+
+    const buildSplitCell = (isStam) => {
+        const cell = document.createElement('div');
+        cell.className = isStam ? 'stam-col' : 'nikud-col';
+        cell.classList.add('special-cell');
+
+        if (lineObj.cells) {
+            // פריסה בשני זוגות עם רווח אמצעי:
+            // [pair-right: name1 → אחד1] [GAP] [pair-left: name2 → אחד2].
+            // בתוך כל זוג: justify-content: space-between דוחף את הילד הראשון
+            // לקצה ה-RTL הטבעי (ימין) ואת השני לקצה השני (שמאל).
+            const halfIdx = Math.floor(lineObj.cells.length / 2);
+            const rightCells = lineObj.cells.slice(0, halfIdx);
+            const leftCells = lineObj.cells.slice(halfIdx);
+
+            const rightPair = document.createElement('div');
+            rightPair.className = 'quad-pair quad-pair-right';
+            for (let i = 0; i < rightCells.length; i++) {
+                const block = document.createElement('div');
+                block.className = 'quad-cell sub-cell sub-cell-' + i;
+                appendWordsToCell(block, rightCells[i] || [], maskName, isStam);
+                rightPair.appendChild(block);
+            }
+
+            const gap = document.createElement('div');
+            gap.className = 'quad-gap';
+
+            const leftPair = document.createElement('div');
+            leftPair.className = 'quad-pair quad-pair-left';
+            for (let i = 0; i < leftCells.length; i++) {
+                const block = document.createElement('div');
+                block.className = 'quad-cell sub-cell sub-cell-' + (i + halfIdx);
+                appendWordsToCell(block, leftCells[i] || [], maskName, isStam);
+                leftPair.appendChild(block);
+            }
+
+            cell.appendChild(rightPair);
+            cell.appendChild(gap);
+            cell.appendChild(leftPair);
+        } else if (lineObj.zigzagRow === 'manual' && lineObj.manualCells) {
+            // פריסה ידנית: כל תא עם רוחב משלו (באחוזים) ויישור לפי המיקום:
+            // תא יחיד ברוחב מלא = מיושר לשני הכיוונים (space-between).
+            // תא ראשון = ימין, תא אחרון = שמאל, אמצעי = מרכז.
+            const cellCount = lineObj.manualCells.length;
+            for (let i = 0; i < cellCount; i++) {
+                const c = lineObj.manualCells[i];
+                const block = document.createElement('div');
+                block.className = 'special-block manual-cell';
+                // flex-basis = רוחב המוצהר; flex-grow=1, flex-shrink=1 מאפשר
+                // לתא להתרחב אם השכן צריך פחות מקום, ולהתכווץ במידת הצורך.
+                // min-width מבטיח שהשכן ישמור על מינימום של 22% מהשורה.
+                block.style.flex = `1 1 ${c.width}%`;
+                block.style.minWidth = '0';
+                let alignClass;
+                if (cellCount === 1) alignClass = 'manual-full';
+                else if (i === 0) alignClass = 'manual-right';
+                else if (i === cellCount - 1) alignClass = 'manual-left';
+                else alignClass = 'manual-center';
+                block.classList.add(alignClass);
+                appendWordsToCell(block, c.words || [], maskName, isStam);
+                cell.appendChild(block);
+            }
+        } else if (lineObj.zigzagRow === 'triple') {
+            // שורה עם 3 בלוקים: ימין 25% / מרכז 50% / שמאל 25%.
+            const rightBlock = document.createElement('div');
+            rightBlock.className = 'special-block triple-right';
+            appendWordsToCell(rightBlock, lineObj.rightWords || [], maskName, isStam);
+            const centerBlock = document.createElement('div');
+            centerBlock.className = 'special-block triple-center';
+            appendWordsToCell(centerBlock, lineObj.centerWords || [], maskName, isStam);
+            const leftBlock = document.createElement('div');
+            leftBlock.className = 'special-block triple-left';
+            appendWordsToCell(leftBlock, lineObj.leftWords || [], maskName, isStam);
+            cell.appendChild(rightBlock);
+            cell.appendChild(centerBlock);
+            cell.appendChild(leftBlock);
+        } else if (lineObj.zigzagRow === 'single') {
+            // (שמור לגיבוי - לא בשימוש כרגע. שירות זיגזג ממירות single ל-triple.)
+            const leftSp = document.createElement('div');
+            leftSp.className = 'special-spacer';
+            const center = document.createElement('div');
+            center.className = 'special-block center';
+            appendWordsToCell(center, lineObj.centerWords || [], maskName, isStam);
+            const rightSp = document.createElement('div');
+            rightSp.className = 'special-spacer';
+            cell.appendChild(rightSp);
+            cell.appendChild(center);
+            cell.appendChild(leftSp);
+        } else {
+            const rightBlock = document.createElement('div');
+            rightBlock.className = 'special-block right';
+            appendWordsToCell(rightBlock, lineObj.rightWords || [], maskName, isStam);
+            const gap = document.createElement('div');
+            gap.className = 'special-gap';
+            const leftBlock = document.createElement('div');
+            leftBlock.className = 'special-block left';
+            appendWordsToCell(leftBlock, lineObj.leftWords || [], maskName, isStam);
+            cell.appendChild(rightBlock);
+            cell.appendChild(gap);
+            cell.appendChild(leftBlock);
+        }
+        return cell;
+    };
+
+    const stamCell = buildSplitCell(true);
+    const markersCell = document.createElement('div');
+    markersCell.className = 'markers-col';
+    const markerParts = buildMarkerContent(lineObj, prev);
+    markerParts.forEach(p => markersCell.appendChild(p));
+    const nikudCell = buildSplitCell(false);
+
+    if (lineObj.firstChapterNum != null) prev.ch = lineObj.firstChapterNum;
+    if (lineObj.firstVerseNum != null) prev.vs = lineObj.firstVerseNum;
+
+    row.appendChild(stamCell);
+    row.appendChild(markersCell);
+    row.appendChild(nikudCell);
+    return row;
 }
 
 /**
@@ -157,7 +342,6 @@ function renderColumnUI(columnLines) {
     const container = document.getElementById('reader-container');
     container.innerHTML = '';
 
-    // כותרת אופציונלית (משמשת בהפטרות - שם הפטרה + ספר ופסוקים)
     if (window._currentHeader) {
         const headerEl = document.createElement('div');
         headerEl.className = 'reader-header';
@@ -179,86 +363,35 @@ function renderColumnUI(columnLines) {
     const page = document.createElement('div');
     page.className = 'reader-page';
 
-    // מעקב אחרי הפרק והפסוק האחרונים שהוצגו - לזיהוי רצף
     const prev = { ch: null, vs: null };
+    const maskName = !!(typeof AppState !== 'undefined' && AppState.settings && AppState.settings.hideDivineName);
 
     columnLines.forEach(lineObj => {
+        // שורה מיוחדת (שירה/רשימה)
+        if (lineObj.specialKind === 'shira' || lineObj.specialKind === 'list' || lineObj.specialKind === 'list_quad') {
+            page.appendChild(renderSpecialRow(lineObj, maskName, prev));
+            return;
+        }
+
         const row = document.createElement('div');
         row.className = `reader-row layout-${lineObj.layout}`;
 
         const stamCell = document.createElement('div');
         stamCell.className = 'stam-col';
 
-        // עמודת המסמנים האמצעית - מספרי פרק/פסוק ושם עליה
         const markersCell = document.createElement('div');
         markersCell.className = 'markers-col';
         const markerParts = buildMarkerContent(lineObj, prev);
         markerParts.forEach(p => markersCell.appendChild(p));
 
-        // עדכון prev לפי השורה הנוכחית
         if (lineObj.firstChapterNum != null) prev.ch = lineObj.firstChapterNum;
         if (lineObj.firstVerseNum != null) prev.vs = lineObj.firstVerseNum;
 
         const nikudCell = document.createElement('div');
         nikudCell.className = 'nikud-col';
 
-        let isGapNext = false;
-
-        const maskName = !!(typeof AppState !== 'undefined' && AppState.settings && AppState.settings.hideDivineName);
-        lineObj.words.forEach(wordObj => {
-            if (wordObj.stam === '{GAP}') {
-                // הזרקת אלמנט רווח לסתומה
-                const spacer1 = document.createElement('div');
-                spacer1.className = 'halachic-spacer spacer-setuma';
-                stamCell.appendChild(spacer1);
-
-                const spacer2 = document.createElement('span');
-                spacer2.className = 'halachic-spacer spacer-setuma';
-                nikudCell.appendChild(spacer2);
-                return;
-            }
-
-            // --- הרכבת מילת סת"ם עם אותיות לחיתוך/מתיחה ---
-            // תמיכה ב-markers: ... = אות זעירא, ... = אות רבתי
-            // אם stam ריק (קרי ולא כתיב) - דילוג על הוספת מילה לטור הסת"ם
-            if (wordObj.stam) {
-                const stamText = maskName ? maskDivineName(wordObj.stam) : wordObj.stam;
-                const wordEl = document.createElement('div');
-                wordEl.className = 'stam-word';
-                let inZeira = false;
-                let inRabati = false;
-                for (let i = 0; i < stamText.length; i++) {
-                    const char = stamText[i];
-                    const code = char.charCodeAt(0);
-                    if (code === 0xE020) { inZeira = true; continue; }
-                    if (code === 0xE021) { inZeira = false; continue; }
-                    if (code === 0xE022) { inRabati = true; continue; }
-                    if (code === 0xE023) { inRabati = false; continue; }
-                    const charEl = document.createElement('span');
-                    charEl.className = 'stam-letter';
-                    if (inZeira) charEl.classList.add('letter-zeira');
-                    if (inRabati) charEl.classList.add('letter-rabati');
-                    charEl.innerText = char;
-                    wordEl.appendChild(charEl);
-                }
-                stamCell.appendChild(wordEl);
-                // text node עם רווח בין מילים - חיוני להדפסה (table-cell ללא flex gap)
-                // ובתצוגה רגילה (flex) זה רק anonymous flex item ריק שלא מפריע.
-                stamCell.appendChild(document.createTextNode(' '));
-            }
-
-            // --- הרכבת מילת הניקוד ---
-            // אם nikud ריק (כתיב ולא קרי) - דילוג על טור הניקוד
-            if (wordObj.nikud) {
-                const nikudText = maskName ? maskDivineName(wordObj.nikud) : wordObj.nikud;
-                const nikudWord = document.createElement('span');
-                const nikudHtml = nikudText
-                    .replace(/\uE020([\s\S]*?)\uE021/g, '<span class="letter-zeira">$1</span>')
-                    .replace(/\uE022([\s\S]*?)\uE023/g, '<span class="letter-rabati">$1</span>');
-                nikudWord.innerHTML = nikudHtml + ' ';
-                nikudCell.appendChild(nikudWord);
-            }
-        });
+        appendWordsToCell(stamCell, lineObj.words, maskName, true);
+        appendWordsToCell(nikudCell, lineObj.words, maskName, false);
 
         row.appendChild(stamCell);
         row.appendChild(markersCell);
