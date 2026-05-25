@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lineSpacing: document.getElementById('setting-line-spacing'),
         swapColumns: document.getElementById('setting-swap-columns'),
         hideRowBorders: document.getElementById('setting-hide-row-borders'),
-        hideDivineName: document.getElementById('setting-hide-divine-name')
+        hideDivineName: document.getElementById('setting-hide-divine-name'),
+        startupMode: document.getElementById('setting-startup-mode')
     };
 
     // טאבים
@@ -71,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inputs.swapColumns) inputs.swapColumns.checked = !!AppState.settings.swapColumns;
         if (inputs.hideRowBorders) inputs.hideRowBorders.checked = !!AppState.settings.hideRowBorders;
         if (inputs.hideDivineName) inputs.hideDivineName.checked = !!AppState.settings.hideDivineName;
+        if (inputs.startupMode) inputs.startupMode.value = AppState.settings.startupMode || 'parasha';
 
         document.getElementById('stam-size-val').innerText = AppState.settings.stamFontSize;
         document.getElementById('nikud-size-val').innerText = AppState.settings.nikudFontSize;
@@ -165,6 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof renderCurrentColumn === 'function') {
                 try { renderCurrentColumn(); } catch (_) {}
             }
+        });
+    }
+    if (inputs.startupMode) {
+        inputs.startupMode.addEventListener('change', (e) => {
+            handleSettingChange('startupMode', e.target.value);
         });
     }
 });

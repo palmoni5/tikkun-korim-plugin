@@ -42,6 +42,42 @@ function normalizeParashaName(uiName) {
     return PARASHA_NAME_MAPPING[uiName] || uiName;
 }
 
+// ממיר שם פרשה שמגיע מ-API של אוצריא (עם ניקוד) לשם שבו משתמש התוסף
+function resolveParashaFromOtzaria(otzariaName) {
+    const stripped = otzariaName.replace(/[֑-ׇ]/g, '').trim();
+    // פרשות כפולות (למשל "תזריע-מצורע") - נפתח בראשונה
+    const firstName = stripped.split(/[-–]/)[0].trim();
+    console.log('[tikkun] resolveParashaFromOtzaria: input="' + otzariaName + '" stripped="' + stripped + '" firstName="' + firstName + '"');
+
+    // מפה הפוכה: שם ב-kosher_dart → שם ב-TORAH_STRUCTURE
+    const reverseMap = {};
+    for (const [uiName, mappedName] of Object.entries(PARASHA_NAME_MAPPING)) {
+        reverseMap[mappedName] = uiName;
+    }
+    console.log('[tikkun] reverseMap:', JSON.stringify(reverseMap));
+
+    for (const candidate of [firstName, stripped]) {
+        for (const [bookId, bookData] of Object.entries(TORAH_STRUCTURE)) {
+            if (bookData.parashot.includes(candidate)) {
+                console.log('[tikkun] direct match: candidate="' + candidate + '" → bookId=' + bookId);
+                return { bookId, parashaName: candidate };
+            }
+        }
+        const uiName = reverseMap[candidate];
+        console.log('[tikkun] reverseMap lookup: candidate="' + candidate + '" → uiName="' + uiName + '"');
+        if (uiName) {
+            for (const [bookId, bookData] of Object.entries(TORAH_STRUCTURE)) {
+                if (bookData.parashot.includes(uiName)) {
+                    console.log('[tikkun] mapped match: candidate="' + candidate + '" → uiName="' + uiName + '" bookId=' + bookId);
+                    return { bookId, parashaName: uiName };
+                }
+            }
+        }
+    }
+    console.warn('[tikkun] no match found for:', otzariaName);
+    return null;
+}
+
 function initNavigation() {
     populateSectionSelect();
     populateMethodSelect();
@@ -63,6 +99,7 @@ function populateSectionSelect() {
     sel.value = currentNavState.section;
     sel.addEventListener('change', (e) => {
         currentNavState.section = e.target.value;
+        saveNavState();
         updateUIForSection();
         if (currentNavState.section === 'torah') {
             processedAll = null; // טעון מחדש
@@ -119,6 +156,7 @@ function updateUIForSection() {
 
 function populateTanachBookSelect() {
     if (currentNavState.section === 'torah') return;
+    if (currentNavState.section === 'haftarot' || currentNavState.section === 'torah_readings') return;
     const sel = document.getElementById('select-book');
     sel.innerHTML = '';
     const books = window.TANACH_SECTIONS[currentNavState.section].books;
@@ -139,10 +177,12 @@ function populateTanachBookSelect() {
         if (currentNavState.section === 'torah') {
             // לתורה - הניווט לפי הקוד הקיים
             currentNavState.bookId = e.target.value;
+            saveNavState();
             populateParashaSelect();
         } else {
             currentNavState.tanachBookId = e.target.value;
             currentNavState.tanachChapter = 1;
+            saveNavState();
             populateChapterSelect();
             loadAndDisplayTanachBook();
         }
@@ -166,6 +206,7 @@ function populateChapterSelect() {
     sel.value = currentNavState.tanachChapter || 1;
     sel.onchange = (e) => {
         currentNavState.tanachChapter = parseInt(e.target.value);
+        saveNavState();
         scrollToChapter(currentNavState.tanachChapter);
     };
 }
@@ -206,6 +247,7 @@ function populateMethodSelect() {
     methodSelect.value = currentNavState.methodId;
     methodSelect.addEventListener('change', (e) => {
         currentNavState.methodId = e.target.value;
+        saveNavState();
         processedAll = null;
         navigateToCurrentParasha();
     });
@@ -221,20 +263,24 @@ function populateBookSelect() {
         option.textContent = bookData.name;
         bookSelect.appendChild(option);
     }
+    bookSelect.value = currentNavState.bookId;
     // onchange (לא addEventListener) - כדי שלא להתנגש עם populateTanachBookSelect
     bookSelect.onchange = (e) => {
         if (currentNavState.section === 'torah') {
             currentNavState.bookId = e.target.value;
+            saveNavState();
             populateParashaSelect();
         } else {
             currentNavState.tanachBookId = e.target.value;
             currentNavState.tanachChapter = 1;
+            saveNavState();
             populateChapterSelect();
             loadAndDisplayTanachBook();
         }
     };
     parashaSelect.onchange = (e) => {
         currentNavState.parashaName = e.target.value;
+        saveNavState();
         populateAliyaSelect();
         navigateToCurrentParasha();
     };
@@ -251,7 +297,11 @@ function populateParashaSelect() {
         option.textContent = parashaName;
         parashaSelect.appendChild(option);
     });
-    currentNavState.parashaName = parashot[0];
+    // שמור על הפרשה הנוכחית אם היא תקפה לחומש זה, אחרת אפס לראשונה
+    if (!parashot.includes(currentNavState.parashaName)) {
+        currentNavState.parashaName = parashot[0];
+    }
+    parashaSelect.value = currentNavState.parashaName;
     populateAliyaSelect();
     navigateToCurrentParasha();
 }
@@ -282,7 +332,8 @@ function populateAliyaSelect() {
     if (currentNavState.section !== 'torah') return;
     const bookName = TORAH_STRUCTURE[currentNavState.bookId].name;
     const normalized = normalizeParashaName(currentNavState.parashaName);
-    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[currentNavState.parashaName])
+                || (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
 
     // אפשרות "כל הפרשה" (לראש הפרשה)
     const allOpt = document.createElement('option');
@@ -311,7 +362,8 @@ function scrollToAliya(idx) {
     if (!processedAll) return;
     const bookName = TORAH_STRUCTURE[currentNavState.bookId].name;
     const normalized = normalizeParashaName(currentNavState.parashaName);
-    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[currentNavState.parashaName])
+                || (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
     const a = aliyot[idx];
     if (!a) return;
 
@@ -365,8 +417,27 @@ function findWordSequence(tokens, words, fromIdx) {
         while (wIdx < normWords.length && tIdx < tokens.length) {
             const tok = tokens[tIdx];
             if (tok.type !== 'word') { tIdx++; continue; }
-            if (norm(tok.value) !== normWords[wIdx]) { ok = false; break; }
-            wIdx++; tIdx++;
+            const searchWord = normWords[wIdx];
+            const tokenWord = norm(tok.value);
+            if (tokenWord === searchWord) {
+                wIdx++; tIdx++;
+            } else if (searchWord.startsWith(tokenWord)) {
+                // מילת החיפוש היא חיבור של כמה טוקנים שהיו מחוברים במקף
+                // (למשל "אתהמשכן" = "את" + "המשכן" בטקסט המקורי)
+                let built = tokenWord;
+                tIdx++;
+                while (built.length < searchWord.length && tIdx < tokens.length) {
+                    const next = tokens[tIdx];
+                    if (next.type !== 'word') { tIdx++; continue; }
+                    built += norm(next.value);
+                    tIdx++;
+                    if (built === searchWord) break;
+                    if (!searchWord.startsWith(built)) break;
+                }
+                if (built === searchWord) { wIdx++; } else { ok = false; break; }
+            } else {
+                ok = false; break;
+            }
         }
         if (ok && wIdx === normWords.length) return i;
     }
@@ -472,6 +543,10 @@ function cleanRawText(rawText) {
     decoder.innerHTML = rawText;
     rawText = decoder.value;
 
+    // נורמליזציה: ׇ (U+05C7 קמץ קטן) -> ָ (U+05B8 קמץ רגיל)
+    // הפונטים שלנו לא תומכים טוב ב-קמץ קטן וגורמים ל-font fallback של ה-כ ועוד אותיות.
+    rawText = rawText.replace(/ׇ/g, 'ָ');
+
     // זיהוי "רווח ויזואלי" בטקסט אוצריא: רצף של 4+ NBSP (U+00A0) מסמן
     // הפסקה בין חלקי פסוק (משמש בעיקר בשירות כמו האזינו, הים). מסומנים
     // כ-SEGBREAKMARK שיתורגם ל-token segment_break ב-tokenizeText.
@@ -511,38 +586,70 @@ function cleanRawText(rawText) {
     return rawText;
 }
 
+// פונקציית טעינה משותפת עם retry ודיבוג.
+// מחזירה { text, complete, aborted }:
+//   text     - הטקסט שנטען (יכול להיות חלקי אם complete=false)
+//   complete - true אם הספר נטען במלואו
+//   aborted  - true אם הופסק בגלל fetchRequestId חדש (requestId != null בלבד)
+async function fetchBookContentRaw(bookApiName, requestId) {
+    const limit = 5000;
+    const MAX_ITER = 500;
+    const MAX_RETRIES = 3;
+    let rawText = '';
+    let offset = 0;
+    let iter = 0;
+    console.log(`[tikkun] start loading: ${bookApiName}`);
+
+    while (iter++ < MAX_ITER) {
+        if (requestId != null && requestId !== fetchRequestId) {
+            console.log(`[tikkun] aborted: ${bookApiName} (request superseded)`);
+            return { text: rawText, complete: false, aborted: true };
+        }
+
+        let chunk = null;
+        for (let retry = 0; retry < MAX_RETRIES; retry++) {
+            try {
+                const res = await window.Otzaria.call('library.getBookContent', {
+                    bookId: bookApiName, offset, limit
+                });
+                if (requestId != null && requestId !== fetchRequestId) {
+                    return { text: rawText, complete: false, aborted: true };
+                }
+                if (res.success && res.data) {
+                    chunk = (typeof res.data === 'string') ? res.data : JSON.stringify(res.data);
+                    if (retry > 0) console.log(`[tikkun] retry ${retry} succeeded: ${bookApiName} offset=${offset}`);
+                    break;
+                }
+                console.warn(`[tikkun] chunk fail (try ${retry + 1}/${MAX_RETRIES}) ${bookApiName} offset=${offset}:`, res.error);
+            } catch (e) {
+                console.warn(`[tikkun] chunk error (try ${retry + 1}/${MAX_RETRIES}) ${bookApiName} offset=${offset}:`, e.message || e);
+            }
+        }
+
+        if (chunk === null) {
+            console.error(`[tikkun] TRUNCATED: ${bookApiName} failed at offset=${offset} after ${MAX_RETRIES} retries. Loaded ${rawText.length} chars so far.`);
+            return { text: rawText, complete: false, aborted: false };
+        }
+
+        rawText += chunk;
+        if (chunk.length < limit) {
+            console.log(`[tikkun] fully loaded: ${bookApiName} — ${rawText.length} chars total`);
+            return { text: rawText, complete: true, aborted: false };
+        }
+        offset += limit;
+    }
+
+    console.warn(`[tikkun] MAX_ITER reached for ${bookApiName}, treating as complete (${rawText.length} chars)`);
+    return { text: rawText, complete: true, aborted: false };
+}
+
 // טוען חומש מלא מ-bridge, עם cache
 async function fetchFullBook(bookId) {
     if (TorahBookCache[bookId]) return TorahBookCache[bookId];
     const bookName = TORAH_STRUCTURE[bookId].name;
-    let rawText = '';
-    let offset = 0;
-    const limit = 5000;
-    const MAX_ITER = 500;
-    let iter = 0;
-    while (iter++ < MAX_ITER) {
-        try {
-            const res = await window.Otzaria.call('library.getBookContent', {
-                bookId: bookName,
-                offset: offset,
-                limit: limit
-            });
-            if (res.success && res.data) {
-                const chunk = (typeof res.data === 'string') ? res.data : JSON.stringify(res.data);
-                rawText += chunk;
-                if (chunk.length < limit) break;
-                offset += limit;
-            } else {
-                console.error('Failed to load book', bookName, res.error);
-                break;
-            }
-        } catch (e) {
-            console.error('Exception loading book', bookName, e);
-            break;
-        }
-    }
-    TorahBookCache[bookId] = rawText;
-    return rawText;
+    const { text, complete } = await fetchBookContentRaw(bookName, null);
+    if (complete) TorahBookCache[bookId] = text;
+    return text;
 }
 
 // עזר: yield לאירועי דפדפן (לחיצות, scroll וכו') בין שלבי עיבוד כבדים.
@@ -682,7 +789,8 @@ function annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
                 allLines[parashaLineIdx].parashaName = parashaName;
             }
 
-            const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+            const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[parashaName])
+                        || (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
             let aliyaSearchFrom = parashaStart;
             for (const a of aliyot) {
                 const aliyaTokenIdx = findWordSequence(tokens, a.words, aliyaSearchFrom);
@@ -715,34 +823,9 @@ async function loadAndDisplayTanachBook() {
 
     let processed = TanachCache[book.id];
     if (!processed) {
-        // טעינה מ-bridge
-        let rawText = '';
-        let offset = 0;
-        const limit = 5000;
-        const MAX_ITER = 500;
-        let iter = 0;
-        while (iter++ < MAX_ITER) {
-            try {
-                const res = await window.Otzaria.call('library.getBookContent', {
-                    bookId: book.name,
-                    offset: offset,
-                    limit: limit
-                });
-                if (myRequestId !== fetchRequestId) return;
-                if (res.success && res.data) {
-                    const chunk = (typeof res.data === 'string') ? res.data : JSON.stringify(res.data);
-                    rawText += chunk;
-                    if (chunk.length < limit) break;
-                    offset += limit;
-                } else {
-                    console.error('Failed to load tanach book', book.name, res.error);
-                    break;
-                }
-            } catch (e) {
-                console.error('Exception loading tanach book', book.name, e);
-                break;
-            }
-        }
+        const { text: rawText, complete, aborted } = await fetchBookContentRaw(book.name, myRequestId);
+        if (aborted || myRequestId !== fetchRequestId) return;
+        if (!complete) console.warn(`[tikkun] Tanach book may be truncated: ${book.name}`);
 
         // ניקוי - cleanRawText כבר ממיר h2 ל-CHAPTERMARK ו-(אות) ל-VERSEMARK
         const cleaned = cleanRawText(rawText);
@@ -762,7 +845,7 @@ async function loadAndDisplayTanachBook() {
         }
 
         processed = { rawText, tokens, allLines, chapterToLineIdx };
-        TanachCache[book.id] = processed;
+        if (complete) TanachCache[book.id] = processed; // שמור רק אם נטען במלואו
     }
 
     if (myRequestId !== fetchRequestId) return;
@@ -825,30 +908,21 @@ function computeBookStartIndices(tokens) {
 // מחפש באיזה עמוד נמצאת תחילת פרשה
 function findPageForParasha(parashaName) {
     if (!processedAll) return { pageIdx: 0, lineInPage: 0 };
-    const normalized = normalizeParashaName(parashaName);
-    // חיפוש מתחיל מתחילת החומש הנוכחי (כדי לא לתפוס מופע מוקדם של אותה מילה)
-    const bookStart = (processedAll.bookStartTokenIdx || {})[currentNavState.bookId] || 0;
-    const startTokenIdx = window.findParashaStart(processedAll.tokens, normalized, bookStart);
-    if (startTokenIdx < 0) {
-        console.warn(`Parasha ${normalized} not found in tokens`);
-        return { pageIdx: 0, lineInPage: 0 };
-    }
 
-    // מצא את השורה שה-startTokenIdx שלה מוקדם או שווה ל-startTokenIdx של הפרשה,
-    // וה-startTokenIdx של השורה הבאה גדול ממנו.
+    // שימוש בסימוני parashaName שחושבו ב-annotateAliyotOnLines —
+    // כל שורת תחילת פרשה כבר מסומנת, כך שאין צורך לחפש מחדש ב-tokens
+    // (חיפוש ב-tokens מתחיל מתחילת החומש ועלול לתפוס מופע קודם של אותה מילה).
     const lines = processedAll.allLines;
     let foundLineIdx = -1;
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-        const thisStart = lines[lineIdx].startTokenIdx;
-        const nextStart = (lineIdx + 1 < lines.length) ? lines[lineIdx + 1].startTokenIdx : Infinity;
-        if (thisStart >= 0 && startTokenIdx >= thisStart && startTokenIdx < nextStart) {
+        if (lines[lineIdx].parashaName === parashaName) {
             foundLineIdx = lineIdx;
             break;
         }
     }
 
     if (foundLineIdx < 0) {
-        console.warn(`Line for token ${startTokenIdx} not found`);
+        console.warn(`Parasha ${parashaName} not found in annotated lines`);
         return { pageIdx: 0, lineInPage: 0 };
     }
 
@@ -908,7 +982,7 @@ document.getElementById('btn-next-col').addEventListener('click', () => {
     if (currentNavState.currentColumnIndex < paginatedColumns.length - 1) {
         currentNavState.currentColumnIndex++;
         renderCurrentColumn(0);
-        // עדכון תפריטים בעקבות מעבר עמוד
+        saveNavState();
         setTimeout(syncSelectsToScrollPosition, 0);
     }
 });
@@ -917,6 +991,7 @@ document.getElementById('btn-prev-col').addEventListener('click', () => {
     if (currentNavState.currentColumnIndex > 0) {
         currentNavState.currentColumnIndex--;
         renderCurrentColumn(0);
+        saveNavState();
         setTimeout(syncSelectsToScrollPosition, 0);
     }
 });
@@ -925,18 +1000,19 @@ document.getElementById('btn-prev-col').addEventListener('click', () => {
 // === סנכרון תפריטי הניווט לפי מיקום הגלילה ===
 // =================================================================
 
-// מוצא את אינדקס השורה הראשונה הגלויה כעת ב-container
-function getFirstVisibleLineIndex() {
+// מוצא את אינדקס השורה הגלויה ב-container לפי offset נתון (לזיהוי מיקום בתפריטים)
+function getFirstVisibleLineIndex(rowOffset = 4) {
     const container = document.getElementById('reader-container');
     if (!container) return -1;
     const rows = container.querySelectorAll('.reader-row');
     const scrollTop = container.scrollTop;
     const containerTop = container.offsetTop;
+    let found = 0;
     for (let i = 0; i < rows.length; i++) {
         const rowTop = rows[i].offsetTop - containerTop;
-        // השורה הראשונה שה-bottom שלה מתחת לראש ה-viewport
         if (rowTop + rows[i].offsetHeight > scrollTop + 4) {
-            return i;
+            if (found >= rowOffset) return i;
+            found++;
         }
     }
     return rows.length - 1;
@@ -979,6 +1055,7 @@ function syncSelectsToScrollPosition() {
             currentNavState.tanachChapter = ch;
             const sel = document.getElementById('select-chapter');
             if (sel) sel.value = String(ch);
+            saveNavState();
         }
     } else if (section === 'torah' && processedAll) {
         // עמוד תורה: זיהוי חומש, פרשה ועליה לפי השורה הגלויה
@@ -1024,6 +1101,7 @@ function syncSelectsToScrollPosition() {
             if (ps) ps.value = curParasha;
             // עדכון בורר העליות לפרשה החדשה (בלי לטעון מחדש)
             populateAliyaSelectQuiet();
+            saveNavState();
         }
 
         // זיהוי עליה: חיפוש לאחור עד שמוצאים aliyaIdx, רק בתוך אותה פרשה
@@ -1052,7 +1130,8 @@ function populateAliyaSelectQuiet() {
     sel.innerHTML = '';
     const bookName = TORAH_STRUCTURE[currentNavState.bookId].name;
     const normalized = normalizeParashaName(currentNavState.parashaName);
-    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
+    const aliyot = (window.ALIYOT_INDEX?.[bookName]?.[currentNavState.parashaName])
+                || (window.ALIYOT_INDEX?.[bookName]?.[normalized]) || [];
     const allOpt = document.createElement('option');
     allOpt.value = '';
     allOpt.textContent = 'כל הפרשה';
@@ -1099,6 +1178,7 @@ function populateHaftarahSelect() {
     }
     sel.onchange = (e) => {
         currentNavState.haftarahId = e.target.value;
+        saveNavState();
         loadAndDisplayHaftarah();
     };
 }
@@ -1161,31 +1241,10 @@ async function loadTanachBookByName(bookName, requestId) {
     }
     if (TanachCache[book.id]) return TanachCache[book.id];
 
-    let rawText = '';
-    let offset = 0;
-    const limit = 5000;
-    const MAX_ITER = 500;
-    let iter = 0;
-    while (iter++ < MAX_ITER) {
-        try {
-            const res = await window.Otzaria.call('library.getBookContent', {
-                bookId: book.name, offset, limit
-            });
-            if (requestId != null && requestId !== fetchRequestId) return null;
-            if (res.success && res.data) {
-                const chunk = (typeof res.data === 'string') ? res.data : JSON.stringify(res.data);
-                rawText += chunk;
-                if (chunk.length < limit) break;
-                offset += limit;
-            } else {
-                console.error('Failed to load book', book.name, res.error);
-                break;
-            }
-        } catch (e) {
-            console.error('Exception loading book', book.name, e);
-            break;
-        }
-    }
+    const { text: rawText, complete, aborted } = await fetchBookContentRaw(book.name, requestId);
+    if (aborted) return null;
+    if (!complete) console.warn(`[tikkun] Tanach book (haftarah) may be truncated: ${book.name}`);
+
     const cleaned = cleanRawText(rawText);
     let tokens = window.PageLayoutEngine.tokenizeText(cleaned);
     if (window.SpecialLayouts) {
@@ -1200,7 +1259,7 @@ async function loadTanachBookByName(bookName, requestId) {
         }
     }
     const processed = { rawText, tokens, allLines, chapterToLineIdx };
-    TanachCache[book.id] = processed;
+    if (complete) TanachCache[book.id] = processed; // שמור רק אם נטען במלואו
     return processed;
 }
 
@@ -1306,6 +1365,7 @@ function populateTorahReadingSelect() {
     }
     sel.onchange = (e) => {
         currentNavState.torahReadingId = e.target.value;
+        saveNavState();
         loadAndDisplayTorahReading();
     };
 }
@@ -1447,6 +1507,45 @@ async function loadAndDisplayTorahReading() {
     window._currentHeader = { title: reading.name, subtitle: 'קריאה: ' + subtitle };
 
     renderCurrentColumn();
+}
+
+// =================================================================
+// === שמירה ושחזור מיקום ניווט ===
+// =================================================================
+
+let _saveNavDebounce = null;
+function saveNavState() {
+    clearTimeout(_saveNavDebounce);
+    _saveNavDebounce = setTimeout(async () => {
+        try {
+            const state = {
+                section: currentNavState.section,
+                bookId: currentNavState.bookId,
+                parashaName: currentNavState.parashaName,
+                methodId: currentNavState.methodId,
+                tanachBookId: currentNavState.tanachBookId,
+                tanachChapter: currentNavState.tanachChapter,
+                currentColumnIndex: currentNavState.currentColumnIndex,
+                haftarahId: currentNavState.haftarahId,
+                torahReadingId: currentNavState.torahReadingId
+            };
+            await window.Otzaria.call('storage.set', { key: 'tikkunNavState', value: state });
+        } catch (e) {
+            console.warn('[tikkun] Failed to save nav state:', e);
+        }
+    }, 1500);
+}
+
+async function loadNavState() {
+    try {
+        const res = await window.Otzaria.call('storage.get', { key: 'tikkunNavState' });
+        if (res.success && res.data) {
+            Object.assign(currentNavState, res.data);
+            console.log('[tikkun] Nav state restored:', res.data);
+        }
+    } catch (e) {
+        console.warn('[tikkun] Failed to load nav state:', e);
+    }
 }
 
 // ממזג עליות עוקבות/חופפות לטווחים רציפים (לצורך תצוגה בכותרת)

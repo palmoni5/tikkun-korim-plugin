@@ -56,8 +56,11 @@
     --radius-pill: 999px;
 
     /* משתני התוסף (גופני סת"ם/ניקוד וגדלים שיעודכנו ע"י המשתמש) */
-    --font-stam:  'Ashkenazi-Stam', serif;
-    --font-nikud: 'Standard-Nikud', serif;
+    /* fallbacks: פונטים עבריים מערכתיים שיודעים לטפל היטב בשילובים של ניקוד+טעם */
+    /* על אותיות יורדות (ך, ן, ק, ף, ץ). זה מונע הופעת dotted circle (◌)        */
+    /* כאשר הפונט הראשי לא מצליח לרנדר את הצירוף.                                 */
+    --font-stam:  'Ashkenazi-Stam', 'David CLM', 'SBL Hebrew', 'Times New Roman', serif;
+    --font-nikud: 'Standard-Nikud', 'SBL Hebrew', 'Ezra SIL', 'Taamey Frank CLM', 'David CLM', 'Times New Roman', serif;
     --stam-font-size: 1.6em;
     --nikud-font-size: 1.35em;
     --stam-font-color: var(--color-on-surface);

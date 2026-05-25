@@ -4,8 +4,8 @@ const AppState = {
     settings: {
         stamFont: 'Klasi',
         nikudFont: 'Standard',
-        stamFontSize: 26,
-        nikudFontSize: 22,
+        stamFontSize: 25,
+        nikudFontSize: 25,
         stamColor: '',
         nikudColor: '',
         hideStam: false,
@@ -16,7 +16,8 @@ const AppState = {
         lineSpacing: 1.3,
         swapColumns: false,    // false=סת"ם בימין, ניקוד בשמאל; true=הפוך
         hideRowBorders: false, // הסתרת קווי הפרדה בין שורות
-        hideDivineName: false  // הסתרת שם השם (יהוה -> יקוק)
+        hideDivineName: false, // הסתרת שם השם (יהוה -> יקוק)
+        startupMode: 'parasha' // 'parasha' | 'lastPosition'
     }
 };
 
@@ -141,10 +142,55 @@ if (window.Otzaria) {
         
         // טעינת הגדרות מקומיות
         await loadSettings();
-        
+
+        // שחזור מיקום הניווט השמור (לפני initNavigation כדי שהסלקטים ייאתחלו נכון)
+        if (typeof loadNavState === 'function') {
+            await loadNavState();
+        }
+
+        // פתיחה בפרשת השבוע הקרובה (אם נתמך ע"י גרסת אוצריא ומוגדר בהגדרות)
+        console.log('[tikkun] startupMode:', AppState.settings.startupMode);
+        if (AppState.settings.startupMode !== 'lastPosition' && typeof resolveParashaFromOtzaria === 'function') {
+            try {
+                const calData = await window.Otzaria.call('calendar.getJewishDate', {});
+                console.log('[tikkun] calendar.getJewishDate response:', JSON.stringify(calData));
+                const jewishDate = calData?.success ? calData.data : null;
+                const parashaRaw = jewishDate?.parasha;
+                if (typeof parashaRaw === 'string' && parashaRaw.trim()) {
+                    console.log('[tikkun] parasha from API:', parashaRaw);
+                    const resolved = resolveParashaFromOtzaria(parashaRaw);
+                    console.log('[tikkun] resolved parasha:', JSON.stringify(resolved));
+                    if (resolved) {
+                        currentNavState.section = 'torah';
+                        currentNavState.bookId = resolved.bookId;
+                        currentNavState.parashaName = resolved.parashaName;
+                        currentNavState.currentColumnIndex = 0;
+                        console.log('[tikkun] navigating to parasha:', resolved.parashaName, 'in', resolved.bookId);
+                    } else {
+                        console.warn('[tikkun] could not resolve parasha name:', parashaRaw);
+                    }
+                } else {
+                    console.warn('[tikkun] parasha field missing or empty. parashaRaw =', parashaRaw);
+                }
+            } catch (e) {
+                console.warn('[tikkun] Could not fetch parasha from calendar:', e);
+            }
+        }
+
         // **רק עכשיו** מותר להתחיל לטעון את רשימת החומשים ולקרוא ל-API!
         if (typeof initNavigation === 'function') {
             initNavigation();
+        }
+
+        // לסקציות שאינן תורה: initNavigation תמיד מפעיל Torah.
+        // צריך להפעיל ידנית את תוכן הסקציה המשוחזרת.
+        const sect = (typeof currentNavState !== 'undefined') ? currentNavState.section : 'torah';
+        if (sect === 'haftarot' && typeof loadAndDisplayHaftarah === 'function') {
+            loadAndDisplayHaftarah();
+        } else if (sect === 'torah_readings' && typeof loadAndDisplayTorahReading === 'function') {
+            loadAndDisplayTorahReading();
+        } else if ((sect === 'neviim' || sect === 'ketuvim') && typeof loadAndDisplayTanachBook === 'function') {
+            loadAndDisplayTanachBook();
         }
     });
 
