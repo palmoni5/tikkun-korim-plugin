@@ -397,13 +397,6 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"יהושע","from":"5:2","to":"6:1"},{"book":"יהושע","from":"6:27","to":"6:27"}]
   },
   {
-    id: "h:Pesach I (on Shabbat)",
-    category: "special",
-    name: "פסח - יום ראשון (כשחל בשבת)",
-    ashkenaz: [{"book":"יהושע","from":"3:5","to":"3:7"},{"book":"יהושע","from":"5:2","to":"6:1"},{"book":"יהושע","from":"6:27","to":"6:27"}],
-    sephard: [{"book":"יהושע","from":"5:2","to":"6:1"},{"book":"יהושע","from":"6:27","to":"6:27"}]
-  },
-  {
     id: "h:Pesach II",
     category: "special",
     name: "פסח - יום שני (חו\"ל)",
@@ -425,23 +418,9 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"שמואל ב","from":"22:1","to":"22:51"}]
   },
   {
-    id: "h:Pesach VII (on Shabbat)",
-    category: "special",
-    name: "פסח - שביעי של פסח (כשחל בשבת)",
-    ashkenaz: [{"book":"שמואל ב","from":"22:1","to":"22:51"}],
-    sephard: [{"book":"שמואל ב","from":"22:1","to":"22:51"}]
-  },
-  {
     id: "h:Pesach VIII",
     category: "special",
     name: "פסח - אחרון של פסח (חו\"ל)",
-    ashkenaz: [{"book":"ישעיהו","from":"10:32","to":"12:6"}],
-    sephard: [{"book":"ישעיהו","from":"10:32","to":"12:6"}]
-  },
-  {
-    id: "h:Pesach VIII (on Shabbat)",
-    category: "special",
-    name: "פסח - אחרון של פסח (כשחל בשבת)",
     ashkenaz: [{"book":"ישעיהו","from":"10:32","to":"12:6"}],
     sephard: [{"book":"ישעיהו","from":"10:32","to":"12:6"}]
   },
@@ -467,13 +446,6 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"חבקוק","from":"2:20","to":"3:19"}]
   },
   {
-    id: "h:Shavuot II (on Shabbat)",
-    category: "special",
-    name: "שבועות - יום שני (כשחל בשבת)",
-    ashkenaz: [{"book":"חבקוק","from":"3:1","to":"3:19"}],
-    sephard: [{"book":"חבקוק","from":"2:20","to":"3:19"}]
-  },
-  {
     id: "h:Tish'a B'Av",
     category: "special",
     name: "תשעה באב - שחרית",
@@ -495,13 +467,6 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"שמואל א","from":"1:1","to":"2:10"}]
   },
   {
-    id: "h:Rosh Hashana I (on Shabbat)",
-    category: "special",
-    name: "ראש השנה - יום ראשון (כשחל בשבת)",
-    ashkenaz: [{"book":"שמואל א","from":"1:1","to":"2:10"}],
-    sephard: [{"book":"שמואל א","from":"1:1","to":"2:10"}]
-  },
-  {
     id: "h:Rosh Hashana II",
     category: "special",
     name: "ראש השנה - יום שני",
@@ -512,13 +477,6 @@ const HAFTAROT_LIST = [
     id: "h:Yom Kippur",
     category: "special",
     name: "יום כיפור - שחרית",
-    ashkenaz: [{"book":"ישעיהו","from":"57:14","to":"58:14"}],
-    sephard: [{"book":"ישעיהו","from":"57:14","to":"58:14"}]
-  },
-  {
-    id: "h:Yom Kippur (on Shabbat)",
-    category: "special",
-    name: "יום כיפור - שחרית (כשחל בשבת)",
     ashkenaz: [{"book":"ישעיהו","from":"57:14","to":"58:14"}],
     sephard: [{"book":"ישעיהו","from":"57:14","to":"58:14"}]
   },
@@ -544,13 +502,6 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"זכריה","from":"14:1","to":"14:21"}]
   },
   {
-    id: "h:Sukkot I (on Shabbat)",
-    category: "special",
-    name: "סוכות - יום ראשון (כשחל בשבת)",
-    ashkenaz: [{"book":"זכריה","from":"14:1","to":"14:21"}],
-    sephard: [{"book":"זכריה","from":"14:1","to":"14:21"}]
-  },
-  {
     id: "h:Sukkot II",
     category: "special",
     name: "סוכות - יום שני (חו\"ל)",
@@ -572,23 +523,9 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"מלכים א","from":"8:54","to":"8:66"}]
   },
   {
-    id: "h:Shmini Atzeret (on Shabbat)",
-    category: "special",
-    name: "שמיני עצרת (כשחל בשבת)",
-    ashkenaz: [{"book":"מלכים א","from":"8:54","to":"8:66"}],
-    sephard: [{"book":"מלכים א","from":"8:54","to":"8:66"}]
-  },
-  {
     id: "h:Simchat Torah",
     category: "special",
     name: "שמחת תורה",
-    ashkenaz: [{"book":"יהושע","from":"1:1","to":"1:18"}],
-    sephard: [{"book":"יהושע","from":"1:1","to":"1:18"}]
-  },
-  {
-    id: "h:Simchat Torah (on Shabbat)",
-    category: "special",
-    name: "שמחת תורה (כשחל בשבת)",
     ashkenaz: [{"book":"יהושע","from":"1:1","to":"1:18"}],
     sephard: [{"book":"יהושע","from":"1:1","to":"1:18"}]
   },
@@ -656,13 +593,6 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"מלכים ב","from":"11:17","to":"12:17"}]
   },
   {
-    id: "h:Shabbat Shekalim (on Rosh Chodesh)",
-    category: "special",
-    name: "שבת שקלים (כשחל בראש חודש)",
-    ashkenaz: [{"book":"מלכים ב","from":"12:1","to":"12:17"}],
-    sephard: [{"book":"מלכים ב","from":"11:17","to":"12:17"}]
-  },
-  {
     id: "h:Shabbat Zachor",
     category: "special",
     name: "שבת זכור",
@@ -680,13 +610,6 @@ const HAFTAROT_LIST = [
     id: "h:Shabbat HaChodesh",
     category: "special",
     name: "שבת החודש",
-    ashkenaz: [{"book":"יחזקאל","from":"45:16","to":"46:18"}],
-    sephard: [{"book":"יחזקאל","from":"45:18","to":"46:15"}]
-  },
-  {
-    id: "h:Shabbat HaChodesh (on Rosh Chodesh)",
-    category: "special",
-    name: "שבת החודש (כשחל בראש חודש)",
     ashkenaz: [{"book":"יחזקאל","from":"45:16","to":"46:18"}],
     sephard: [{"book":"יחזקאל","from":"45:18","to":"46:15"}]
   },
