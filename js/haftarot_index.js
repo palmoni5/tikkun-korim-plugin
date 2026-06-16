@@ -733,13 +733,6 @@ const HAFTAROT_LIST = [
     sephard: [{"book":"שמואל א","from":"20:18","to":"20:42"}]
   },
   {
-    id: "h:Yom HaAtzma'ut",
-    category: "special",
-    name: "יום העצמאות",
-    ashkenaz: [{"book":"ישעיהו","from":"10:32","to":"12:6"}],
-    sephard: [{"book":"ישעיהו","from":"10:32","to":"12:6"}]
-  },
-  {
     id: "h:Pinchas occurring after 17 Tammuz",
     category: "special",
     name: "פנחס - כשחל אחרי י\"ז תמוז",
