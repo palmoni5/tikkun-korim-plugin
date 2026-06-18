@@ -1,31 +1,7 @@
-/* הגדרת גופנים מקומיים (יש לוודא שהקבצים בתיקיית fonts) */
-@font-face {
-    font-family: 'Ashkenazi-Stam';
-    src: url('../fonts/Ashkenazi-Stam.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Sefardi-Stam';
-    src: url('../fonts/Sefardi-Stam.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Klasi-Stam';
-    src: url('../fonts/Klasi-Stam.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Standard-Nikud';
-    src: url('../fonts/Standard-Nikud.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
+/* גופני הסת"ם/ניקוד המקומיים נטענים דרך FontFace API ב-js/app.js
+   (ולא דרך @font-face כאן), כדי לשמור על תאימות עיצוב לאוצריא:
+   סורק העיצוב חוסם כל font-family שאינו var(--font-*), ו-@font-face
+   מחייב שם גופן מילולי. הטעינה ב-JS שקופה ונותנת תוצאה זהה. */
 
 /* משתני בסיס: צבעים, גופנים, צורות - לפי DESIGN_GUIDE של אוצריא */
 :root {

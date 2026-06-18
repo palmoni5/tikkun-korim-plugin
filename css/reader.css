@@ -36,6 +36,11 @@
     display: flex;
     flex-direction: row;
     width: 100%;
+    /* גופן הבסיס של השורה מוקטן יחד עם רוחב החלון (--row-font-scale, מוגדר
+       ע"י app.js כאחוז), כך שכל מידות ה-em למטה - הרווחים, גובה השורה
+       והמסמנים - מתכווצים בהתאם. טקסט הסת"ם/ניקוד עצמו אינו מושפע כי
+       הוא נקבע ב-px מוחלט בטורים. */
+    font-size: var(--row-font-scale, 100%);
     margin-bottom: 0.75em;
     border-bottom: 1px solid color-mix(in srgb, var(--color-outline) 25%, transparent);
     padding-bottom: 0.5em;

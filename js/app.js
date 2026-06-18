@@ -1,5 +1,24 @@
 // js/app.js
 
+// טעינת גופני הסת"ם/ניקוד המקומיים דרך FontFace API במקום @font-face ב-CSS.
+// (סורק העיצוב של אוצריא חוסם font-family שאינו var(--font-*); @font-face מחייב
+//  שם מילולי, ולכן טוענים כאן.) אם הטעינה נכשלת — ה-CSS נופל חזרה לגופני הגיבוי.
+(function loadLocalFonts() {
+    if (typeof FontFace === 'undefined' || !document.fonts) return;
+    const FONTS = [
+        ['Ashkenazi-Stam', 'fonts/Ashkenazi-Stam.ttf'],
+        ['Sefardi-Stam',   'fonts/Sefardi-Stam.ttf'],
+        ['Klasi-Stam',     'fonts/Klasi-Stam.ttf'],
+        ['Standard-Nikud', 'fonts/Standard-Nikud.ttf'],
+    ];
+    for (const [family, url] of FONTS) {
+        try {
+            const ff = new FontFace(family, `url('${url}') format('truetype')`, { style: 'normal', weight: 'normal' });
+            ff.load().then(loaded => document.fonts.add(loaded)).catch(() => {});
+        } catch (e) { /* גיבוי ב-CSS יטפל */ }
+    }
+})();
+
 const AppState = {
     settings: {
         stamFont: 'Klasi',
@@ -104,8 +123,8 @@ function applySettingsToUI() {
     };
     root.style.setProperty('--font-stam', resolveFont(settings.stamFont, '-Stam'));
     root.style.setProperty('--font-nikud', resolveFont(settings.nikudFont, '-Nikud'));
-    root.style.setProperty('--stam-font-size', `${settings.stamFontSize}px`);
-    root.style.setProperty('--nikud-font-size', `${settings.nikudFontSize}px`);
+    // גדלי הגופן המוצגים נקבעים ב-applyResponsiveFontScale (תלוי ברוחב החלון).
+    // הם נכתבים כערך px מפורש - לא calc() - כדי שאוצריא תכבד אותם.
     root.style.setProperty('--line-spacing', String(settings.lineSpacing || 1.3));
 
     if (settings.stamColor) root.style.setProperty('--stam-font-color', settings.stamColor);
@@ -129,6 +148,52 @@ function applySettingsToUI() {
     }
     // ודא שה-body מאפשר גלילה אופקית כשהתוכן רחב מהמסך
     document.body.style.overflowX = 'auto';
+
+    // התאמת גודל הגופן המוצג לרוחב החלון
+    applyResponsiveFontScale();
+}
+
+// === התאמת גודל גופן מוצג לרוחב החלון ===
+// גדלי הגופן בהגדרות מכוונים לרוחב העמוד המלא (reader-page, max-width ~1250px).
+// כאשר חלון המשתמש צר מרוחב הייחוס, מקטינים את הגופן *המוצג* באופן יחסי כך
+// שהשורות (שאורכן קבוע ב~36 תווים) ימשיכו להיכנס לרוחב הזמין - בלי לשנות את
+// הערכים השמורים בהגדרות. מעל רוחב הייחוס העמוד תחום ב-max-width, ולכן הגופן
+// אינו גדל מעבר לגודל שבהגדרות (cap ב-1).
+function computeFontScale() {
+    // רוחב הייחוס שאליו מכוונים גדלי הגופן (max-width של reader-page).
+    const REFERENCE_WIDTH = 1250;
+    // ריווחים אופקיים: reader-wrapper (1em*2) + reader-page (0.75em*2) ≈ 56px.
+    const HORIZONTAL_PADDING = 56;
+    const winWidth = window.innerWidth || REFERENCE_WIDTH;
+    const available = winWidth - HORIZONTAL_PADDING;
+    const reference = REFERENCE_WIDTH - HORIZONTAL_PADDING;
+    // מקדם ביטחון: מקטינים מעט יותר מהיחס המדויק, כי רוחב המילים בפועל משתנה
+    // (אותיות רחבות, טעמים) ולעיתים יש חריגה קלה מהשורה. 0.95 מותיר מרווח.
+    const SAFETY = 0.95;
+    let scale = (available / reference) * SAFETY;
+    // לא מגדילים מעבר ל-100% (העמוד תחום ב-max-width), ולא מקטינים מתחת ל-45%.
+    return Math.max(0.45, Math.min(1, scale));
+}
+
+function applyResponsiveFontScale() {
+    const root = document.documentElement;
+    const { settings } = AppState;
+    const scale = computeFontScale();
+    // כותבים ערך px מפורש (לא calc) כדי שאוצריא תכבד את הגודל.
+    root.style.setProperty('--stam-font-size', `${(settings.stamFontSize * scale).toFixed(2)}px`);
+    root.style.setProperty('--nikud-font-size', `${(settings.nikudFontSize * scale).toFixed(2)}px`);
+    // גופן הבסיס של השורה (כאחוז) - מקטין יחד את הרווחים בין השורות, גובה
+    // השורה והמסמנים, באותו יחס כמו הגופן.
+    root.style.setProperty('--row-font-scale', `${(scale * 100).toFixed(1)}%`);
+}
+
+// עדכון קנה המידה בכל שינוי גודל חלון (עם debounce קל למניעת חישוב יתר).
+if (typeof window !== 'undefined') {
+    let _fontScaleTimer = null;
+    window.addEventListener('resize', () => {
+        if (_fontScaleTimer) clearTimeout(_fontScaleTimer);
+        _fontScaleTimer = setTimeout(applyResponsiveFontScale, 100);
+    });
 }
 
 // === אירועי מחזור חיים מול ה-SDK של אוצריא ===
