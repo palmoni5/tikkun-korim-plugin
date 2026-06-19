@@ -69,6 +69,28 @@
         body.hide-stam-column .restore-right { display: block; }
         body.hide-nikud-column .restore-left { display: block; }
 
+        /* בזמן הצצה לטור השני (החלפה מהירה) - אין להציג את כפתורי ההחזרה,
+           כי הם משנים את ההגדרה השמורה ולא את מצב ההצצה הזמני.
+           גם במצב ממורכז - הכפתורים ממוקמים ב-25% מהקצה וחוצים את התוכן הממורכז,
+           ובלאו הכי יש את לחצן ההחלפה בסרגל הניווט. */
+        body.peek-active .restore-overlay,
+        body.col-centered .restore-overlay { display: none !important; }
+
+        /* 6. מירכוז הטור המוצג (כשטור אחד מוסתר וההגדרה פעילה):
+           מוחקים לגמרי את הטור המוסתר (במקום להשאיר את מקומו ריק),
+           וממרכזים את הטור הנותר יחד עם עמודת המסמנים. */
+        body.col-centered .reader-row { justify-content: center; }
+        body.col-centered.hide-stam-column .stam-col,
+        body.col-centered.hide-nikud-column .nikud-col { display: none !important; }
+        body.col-centered .stam-col,
+        body.col-centered .nikud-col { flex: 0 1 50%; }
+
+        /* הדגשת לחצן ההחלפה כשהוא פעיל (מציג כעת את הטור השני) */
+        #btn-swap-col.peek-on {
+            background-color: var(--color-primary-subtle);
+            border-color: var(--color-primary);
+        }
+
         .restore-overlay .md-button {
             box-shadow: 0 4px 12px var(--shadow-overlay);
             font-size: 1em;
@@ -111,6 +133,8 @@
             <button id="btn-prev-col" class="md-button md-button--outlined">עמוד קודם</button>
             <span id="column-indicator">טוען...</span>
             <button id="btn-next-col" class="md-button md-button--filled">עמוד הבא</button>
+            <!-- החלפה מהירה לטור השני (מוצג רק כשטור אחד מוסתר) -->
+            <button id="btn-swap-col" class="md-button md-button--outlined" style="display:none;" onclick="toggleSecondColumn()">הצג טור שני</button>
         </div>
     </nav>
 
@@ -212,6 +236,14 @@
                     <span class="switch-label">הסתר קווי הפרדה בין השורות</span>
                     <label class="md-switch">
                         <input type="checkbox" id="setting-hide-row-borders">
+                        <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
+                    </label>
+                </div>
+                <!-- מוצג רק כאשר טור אחד מוסתר (הסתר סת"ם / הסתר ניקוד) -->
+                <div class="setting-group switch-group" id="setting-group-center-col" style="display:none;">
+                    <span class="switch-label">מרכז את הטור המוצג</span>
+                    <label class="md-switch">
+                        <input type="checkbox" id="setting-center-col">
                         <span class="md-switch__track"><span class="md-switch__thumb"></span></span>
                     </label>
                 </div>

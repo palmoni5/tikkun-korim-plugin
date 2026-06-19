@@ -36,9 +36,14 @@ const AppState = {
         swapColumns: false,    // false=סת"ם בימין, ניקוד בשמאל; true=הפוך
         hideRowBorders: false, // הסתרת קווי הפרדה בין שורות
         hideDivineName: false, // הסתרת שם השם (יהוה -> יקוק)
+        centerSingleColumn: false, // כשטור אחד מוסתר - למרכז את הטור הגלוי (הגדרה נסתרת)
         startupMode: 'parasha' // 'parasha' | 'lastPosition'
     }
 };
+
+// מצב זמני (לא נשמר): האם כרגע מציגים את "הטור השני" (המוסתר) במקום הגלוי,
+// באמצעות לחצן ההחלפה המהירה שבסרגל הניווט.
+let _peekSecondColumn = false;
 
 function hexToRgba(hex, alpha) {
     if (!hex || typeof hex !== 'string') return `rgba(0, 0, 0, ${alpha})`;
@@ -130,8 +135,7 @@ function applySettingsToUI() {
     if (settings.stamColor) root.style.setProperty('--stam-font-color', settings.stamColor);
     if (settings.nikudColor) root.style.setProperty('--nikud-font-color', settings.nikudColor);
 
-    document.body.classList.toggle('hide-stam-column', settings.hideStam);
-    document.body.classList.toggle('hide-nikud-column', settings.hideNikud);
+    applyColumnView();
     document.body.classList.toggle('swap-columns', !!settings.swapColumns);
     document.body.classList.toggle('hide-row-borders', !!settings.hideRowBorders);
 
@@ -151,6 +155,45 @@ function applySettingsToUI() {
 
     // התאמת גודל הגופן המוצג לרוחב החלון
     applyResponsiveFontScale();
+}
+
+// === ניהול תצוגת הטורים (הסתרה / החלפה מהירה / מירכוז) ===
+// מחשב איזה טור מוסתר *בפועל* מתוך ההגדרות ומצב ההחלפה הזמני (_peekSecondColumn),
+// ומחיל את ה-classes על ה-body. כן מעדכן את לחצן ההחלפה המהירה שבסרגל הניווט.
+function applyColumnView() {
+    const s = AppState.settings;
+
+    let hideStam = !!s.hideStam;
+    let hideNikud = !!s.hideNikud;
+    // "טור יחיד" = בדיוק אחד מהטורים מוסתר. רק אז רלוונטיים ההחלפה והמירכוז.
+    const singleHidden = (hideStam !== hideNikud);
+
+    // אם אין מצב טור-יחיד - מאפסים את ההצצה הזמנית.
+    if (!singleHidden) _peekSecondColumn = false;
+
+    // הצצה: מחליפה איזה טור מוסתר בפועל (מציגה את הטור השני).
+    if (_peekSecondColumn && singleHidden) {
+        const t = hideStam; hideStam = hideNikud; hideNikud = t;
+    }
+
+    document.body.classList.toggle('hide-stam-column', hideStam);
+    document.body.classList.toggle('hide-nikud-column', hideNikud);
+    document.body.classList.toggle('col-centered', singleHidden && !!s.centerSingleColumn);
+    document.body.classList.toggle('peek-active', _peekSecondColumn && singleHidden);
+
+    // עדכון לחצן ההחלפה המהירה: מוצג רק במצב טור-יחיד.
+    const swapBtn = document.getElementById('btn-swap-col');
+    if (swapBtn) {
+        swapBtn.style.display = singleHidden ? '' : 'none';
+        swapBtn.classList.toggle('peek-on', _peekSecondColumn);
+        swapBtn.textContent = _peekSecondColumn ? 'חזור לטור הראשי' : 'הצג טור שני';
+    }
+}
+
+// החלפה מהירה בין הטור הגלוי לטור המוסתר (הצצה זמנית, לא נשמר).
+function toggleSecondColumn() {
+    _peekSecondColumn = !_peekSecondColumn;
+    applyColumnView();
 }
 
 // === התאמת גודל גופן מוצג לרוחב החלון ===

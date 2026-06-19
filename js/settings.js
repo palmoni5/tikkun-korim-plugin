@@ -40,8 +40,17 @@ document.addEventListener('DOMContentLoaded', () => {
         swapColumns: document.getElementById('setting-swap-columns'),
         hideRowBorders: document.getElementById('setting-hide-row-borders'),
         hideDivineName: document.getElementById('setting-hide-divine-name'),
+        centerCol: document.getElementById('setting-center-col'),
         startupMode: document.getElementById('setting-startup-mode')
     };
+
+    const centerColGroup = document.getElementById('setting-group-center-col');
+
+    // הגדרת מירכוז הטור רלוונטית רק כשטור אחד מוסתר - אחרת היא נסתרת מהדיאלוג.
+    function updateCenterColVisibility() {
+        const oneHidden = !!AppState.settings.hideStam !== !!AppState.settings.hideNikud;
+        if (centerColGroup) centerColGroup.style.display = oneHidden ? '' : 'none';
+    }
 
     // טאבים
     const tabs = document.querySelectorAll('.settings-tab');
@@ -72,7 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (inputs.swapColumns) inputs.swapColumns.checked = !!AppState.settings.swapColumns;
         if (inputs.hideRowBorders) inputs.hideRowBorders.checked = !!AppState.settings.hideRowBorders;
         if (inputs.hideDivineName) inputs.hideDivineName.checked = !!AppState.settings.hideDivineName;
+        if (inputs.centerCol) inputs.centerCol.checked = !!AppState.settings.centerSingleColumn;
         if (inputs.startupMode) inputs.startupMode.value = AppState.settings.startupMode || 'parasha';
+        updateCenterColVisibility();
 
         document.getElementById('stam-size-val').innerText = AppState.settings.stamFontSize;
         document.getElementById('nikud-size-val').innerText = AppState.settings.nikudFontSize;
@@ -103,8 +114,17 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSettingChange('nikudFontSize', parseInt(e.target.value));
     });
 
-    inputs.hideStam.addEventListener('change', (e) => handleSettingChange('hideStam', e.target.checked));
-    inputs.hideNikud.addEventListener('change', (e) => handleSettingChange('hideNikud', e.target.checked));
+    inputs.hideStam.addEventListener('change', (e) => {
+        handleSettingChange('hideStam', e.target.checked);
+        updateCenterColVisibility();
+    });
+    inputs.hideNikud.addEventListener('change', (e) => {
+        handleSettingChange('hideNikud', e.target.checked);
+        updateCenterColVisibility();
+    });
+    if (inputs.centerCol) {
+        inputs.centerCol.addEventListener('change', (e) => handleSettingChange('centerSingleColumn', e.target.checked));
+    }
     if (inputs.zoom) {
         inputs.zoom.addEventListener('input', (e) => {
             const v = parseInt(e.target.value);
