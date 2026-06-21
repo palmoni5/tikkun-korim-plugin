@@ -185,6 +185,13 @@ function appendWordsToCell(cell, words, maskName, isStam) {
             cell.appendChild(spacer);
             continue;
         }
+        if (wordObj.stam === '{BIGGAP}') {
+            // רווח פתיחה של פרשה סתומה: דוחף את המילה הראשונה לשליש האחרון.
+            const spacer = document.createElement(isStam ? 'div' : 'span');
+            spacer.className = 'halachic-spacer spacer-setuma-start';
+            cell.appendChild(spacer);
+            continue;
+        }
         if (isStam && wordObj.stam) {
             cell.appendChild(buildStamWordEl(wordObj, maskName));
             cell.appendChild(document.createTextNode(' '));

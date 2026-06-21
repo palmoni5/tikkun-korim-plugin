@@ -323,7 +323,11 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
         pendingVerseNum = null;
     };
 
-    const wordLenOf = (w) => w.stam === '{GAP}' ? 9 : visibleStamLen(w.stam || '') + 1;
+    // רוחב רווח פתיחה (סתומה בתחילת קטע): כשני שלישים מהשורה, כך שהמילה
+    // הראשונה תתחיל בשליש האחרון.
+    const LEADING_GAP_CHARS = Math.round(maxCharsPerLine * 2 / 3);
+    const wordLenOf = (w) => w.stam === '{GAP}' ? 9
+        : (w.stam === '{BIGGAP}' ? LEADING_GAP_CHARS : visibleStamLen(w.stam || '') + 1);
 
     // איזון ממוקד: אם השורה הנוכחית קצרה (פחות מ-40%), מנסים למזג אותה
     // עם השורה הקודמת לשורה אחת — גם אם זה חורג מעט מהרוחב המקסימלי.
@@ -469,6 +473,21 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             continue;
         }
 
+        if (tok.type === 'leading_setuma') {
+            // הקטע (תחילת קריאה/הפטרה, או נקודת המשך אחרי דילוג כגון מפטיר
+            // במועדים) בא במקור מיד אחרי פרשה סתומה: השורה מתחילה בשליש האחרון.
+            // אם כבר יש טקסט בשורה (דילוג באמצע) - סוגרים אותה כסוף קטע (לא נמתח)
+            // ואז פותחים שורה מוזחת חדשה עם רווח פתיחה (~2/3 שורה).
+            if (currentLine.length > 0) {
+                lineLayout = 'petucha';
+                flushLine();
+            }
+            currentLine.push({ stam: '{BIGGAP}', nikud: '{BIGGAP}' });
+            charCount += LEADING_GAP_CHARS;
+            lineLayout = 'setuma_start';
+            continue;
+        }
+
         if (tok.type === 'petucha') {
             if (currentLine.length > 0) {
                 lineLayout = 'petucha';
@@ -553,7 +572,9 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
             // אם המילה לא נכנסת לשורה - יורדת לשורה הבאה.
             // שורה שיוצאת קצרה משמעותית (פחות מ-65% מהמכסה) - מסומנת 'partial'
             // כדי שלא תוצג עם רווחים מוזרים. שורות באורך תקין נשארות 'regular' עם יישור מלא.
-            if (currentLine.length > 0 && charCount + baseLen > maxCharsPerLine) {
+            // אם השורה מכילה רק רווח-פתיחה (סתומה) - המילה הראשונה תצורף אליו תמיד.
+            const kqOnlyLeadingGap = currentLine.length === 1 && currentLine[0].stam === '{BIGGAP}';
+            if (currentLine.length > 0 && !kqOnlyLeadingGap && charCount + baseLen > maxCharsPerLine) {
                 if (lineLayout === 'regular' && charCount < maxCharsPerLine * 0.65) {
                     lineLayout = 'partial';
                 }
@@ -581,7 +602,8 @@ function paginateAllTokens(tokens, maxCharsPerLine = 36) {
         // שורה שיוצאת קצרה משמעותית (פחות מ-65% מהמכסה) - מסומנת 'partial'
         // כדי שלא תוצג עם רווחים מוזרים. שורות באורך תקין נשארות 'regular' עם יישור מלא.
         const wordLen = visibleStamLen(wordStam) + 1;
-        if (currentLine.length > 0 && charCount + wordLen > maxCharsPerLine) {
+        const onlyLeadingGap = currentLine.length === 1 && currentLine[0].stam === '{BIGGAP}';
+        if (currentLine.length > 0 && !onlyLeadingGap && charCount + wordLen > maxCharsPerLine) {
             if (lineLayout === 'regular' && charCount < maxCharsPerLine * 0.65) {
                 lineLayout = 'partial';
             }

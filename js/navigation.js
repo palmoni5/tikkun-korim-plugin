@@ -1230,6 +1230,33 @@ function sliceTokensByVerseRange(tokens, fromCh, fromVs, toCh, toVs) {
     return [{ type: 'chapter_break', chapterNum: fromCh }, ...slice];
 }
 
+// האם הפסוק הפותח (fromCh:fromVs) מגיע במקור מיד אחרי פרשה סתומה?
+// בודקים את הטוקן המשמעותי האחרון שלפני verse_break של הפסוק הפותח:
+// אם הוא 'setuma' - הקריאה/ההפטרה מתחילה אחרי סתומה, ולכן השורה הראשונה
+// תוזח לשליש האחרון (ראו טיפול ב-'leading_setuma' במנוע העימוד).
+// פתוחה/מילה/תחילת הספר => לא סתומה.
+function precededBySetuma(tokens, fromCh, fromVs) {
+    let curCh = null, curVs = null, startIdx = -1;
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (t.type === 'chapter_break') { curCh = t.chapterNum; curVs = null; continue; }
+        if (t.type === 'verse_break') {
+            curVs = t.verseNum;
+            if (curCh == null) continue;
+            if (compareVerse(curCh, curVs, fromCh, fromVs) >= 0) { startIdx = i; break; }
+        }
+    }
+    if (startIdx <= 0) return false;
+    for (let j = startIdx - 1; j >= 0; j--) {
+        const t = tokens[j];
+        // מדלגים על מעברי פסוק/פרק ועל segment_break (רווח ויזואלי שנובע
+        // מרצף NBSP אחרי סימן הפרשה במקור) - הם אינם הפסק פרשה בעצמם.
+        if (t.type === 'verse_break' || t.type === 'chapter_break' || t.type === 'segment_break') continue;
+        return t.type === 'setuma';
+    }
+    return false;
+}
+
 // טעינת ספר הנביא/כתוב המכיל את הפטרה (תוך שימוש ב-TanachCache)
 async function loadTanachBookByName(bookName, requestId) {
     // חיפוש ב-cache לפי שם הספר
@@ -1292,9 +1319,19 @@ async function loadAndDisplayHaftarah() {
         const [toCh, toVs] = seg.to.split(':').map(s => parseInt(s, 10));
         const tokenSlice = sliceTokensByVerseRange(processed.tokens, fromCh, fromVs, toCh, toVs);
 
+        // הפטרה שמתחילה מיד אחרי פרשה סתומה במקור - השורה הראשונה תוזח לשליש האחרון.
+        if (sIdx === 0 && precededBySetuma(processed.tokens, fromCh, fromVs)) {
+            combinedTokens.push({ type: 'leading_setuma' });
+        }
+
         if (sIdx > 0) {
-            // הפסקה בין קטעי הפטרה מפוצלת (petucha = ירידת שורה ללא יישור)
-            combinedTokens.push({ type: 'petucha' });
+            // מעבר בין קטעי הפטרה מפוצלת (דילוג). אם קטע ההמשך בא במקור אחרי
+            // סתומה - הזחה לשליש האחרון; אחרת הפסק רגיל (petucha, ירידת שורה ללא יישור).
+            if (precededBySetuma(processed.tokens, fromCh, fromVs)) {
+                combinedTokens.push({ type: 'leading_setuma' });
+            } else {
+                combinedTokens.push({ type: 'petucha' });
+            }
         }
         combinedTokens = combinedTokens.concat(tokenSlice);
     }
@@ -1430,7 +1467,13 @@ async function loadAndDisplayTorahReading() {
         const [toCh, toVs] = a.to.split(':').map(s => parseInt(s, 10));
         const tokenSlice = sliceTokensByVerseRange(processed.tokens, fromCh, fromVs, toCh, toVs);
 
-        // הפסק רק במעבר לא רציף במקור
+        // אם הקריאה מתחילה מיד אחרי פרשה סתומה במקור - השורה הראשונה תוזח
+        // לשליש האחרון (combinedTokens עדיין ריק, כך שהסימון נכנס בתחילת ההתחלה).
+        if (aIdx === 0 && precededBySetuma(processed.tokens, fromCh, fromVs)) {
+            combinedTokens.push({ type: 'leading_setuma' });
+        }
+
+        // הפסק רק במעבר לא רציף במקור (דילוג, כגון מפטיר במועדים ממקום אחר).
         const isNewAliya = a.aliya !== lastAliyaKey;
         if (isNewAliya && lastTo) {
             const sameBook = a.book === lastTo.book;
@@ -1440,7 +1483,13 @@ async function loadAndDisplayTorahReading() {
             );
             const isOverlap = sameBook && cmpV(fromCh, fromVs, lastTo.ch, lastTo.vs) <= 0;
             if (!isAdjacent && !isOverlap) {
-                combinedTokens.push({ type: 'petucha' });
+                // אם נקודת ההמשך באה במקור אחרי סתומה - הזחה לשליש האחרון;
+                // אחרת הפסק רגיל (פתוחה).
+                if (precededBySetuma(processed.tokens, fromCh, fromVs)) {
+                    combinedTokens.push({ type: 'leading_setuma' });
+                } else {
+                    combinedTokens.push({ type: 'petucha' });
+                }
             }
             // בעליות רציפות במקור - לא להוסיף הפסקה. ה-aliyaName יסומן ב-line שמכיל
             // את המילה הראשונה של העליה (גם אם היא בסוף שורה של עליה קודמת).
