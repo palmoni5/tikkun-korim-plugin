@@ -288,15 +288,29 @@ const TORAH_READINGS_LIST = [
     id: "tr:Shmini Atzeret",
     category: "sukkot",
     name: "שמיני עצרת",
-    land: "both",
+    land: "diaspora",
     aliyot: [{"aliya":"1","aliyaLabel":"ראשון","book":"דברים","from":"14:22","to":"14:29"},{"aliya":"2","aliyaLabel":"שני","book":"דברים","from":"15:1","to":"15:18"},{"aliya":"3","aliyaLabel":"שלישי","book":"דברים","from":"15:19","to":"16:3"},{"aliya":"4","aliyaLabel":"רביעי","book":"דברים","from":"16:4","to":"16:8"},{"aliya":"5","aliyaLabel":"חמישי","book":"דברים","from":"16:9","to":"16:17"},{"aliya":"M","aliyaLabel":"מפטיר","book":"במדבר","from":"29:35","to":"30:1"}]
   },
   {
     id: "tr:Shmini Atzeret (on Shabbat)",
     category: "sukkot",
     name: "שמיני עצרת (שבת)",
-    land: "both",
+    land: "diaspora",
     aliyot: [{"aliya":"1","aliyaLabel":"ראשון","book":"דברים","from":"14:22","to":"14:29"},{"aliya":"2","aliyaLabel":"שני","book":"דברים","from":"15:1","to":"15:18"},{"aliya":"3","aliyaLabel":"שלישי","book":"דברים","from":"15:19","to":"15:23"},{"aliya":"4","aliyaLabel":"רביעי","book":"דברים","from":"16:1","to":"16:3"},{"aliya":"5","aliyaLabel":"חמישי","book":"דברים","from":"16:4","to":"16:8"},{"aliya":"6","aliyaLabel":"ששי","book":"דברים","from":"16:9","to":"16:12"},{"aliya":"7","aliyaLabel":"שביעי","book":"דברים","from":"16:13","to":"16:17"},{"aliya":"M","aliyaLabel":"מפטיר","book":"במדבר","from":"29:35","to":"30:1"}]
+  },
+  {
+    id: "custom:Shmini Atzeret IL",
+    category: "sukkot",
+    name: "שמיני עצרת ושמחת תורה",
+    land: "israel",
+    aliyot: [{"aliya":"1","aliyaLabel":"ראשון","book":"דברים","from":"33:1","to":"33:7"},{"aliya":"2","aliyaLabel":"שני","book":"דברים","from":"33:8","to":"33:12"},{"aliya":"3","aliyaLabel":"שלישי","book":"דברים","from":"33:13","to":"33:17"},{"aliya":"4","aliyaLabel":"רביעי","book":"דברים","from":"33:18","to":"33:21"},{"aliya":"5","aliyaLabel":"חמישי","book":"דברים","from":"33:22","to":"33:26"},{"aliya":"6","aliyaLabel":"ששי","book":"דברים","from":"33:27","to":"34:12"},{"aliya":"7","aliyaLabel":"שביעי","book":"בראשית","from":"1:1","to":"2:3"},{"aliya":"M","aliyaLabel":"מפטיר","book":"במדבר","from":"29:35","to":"30:1"}]
+  },
+  {
+    id: "custom:Shmini Atzeret IL (on Shabbat)",
+    category: "sukkot",
+    name: "שמיני עצרת ושמחת תורה (שבת)",
+    land: "israel",
+    aliyot: [{"aliya":"1","aliyaLabel":"ראשון","book":"דברים","from":"33:1","to":"33:7"},{"aliya":"2","aliyaLabel":"שני","book":"דברים","from":"33:8","to":"33:12"},{"aliya":"3","aliyaLabel":"שלישי","book":"דברים","from":"33:13","to":"33:17"},{"aliya":"4","aliyaLabel":"רביעי","book":"דברים","from":"33:18","to":"33:21"},{"aliya":"5","aliyaLabel":"חמישי","book":"דברים","from":"33:22","to":"33:26"},{"aliya":"6","aliyaLabel":"ששי","book":"דברים","from":"33:27","to":"33:29"},{"aliya":"7","aliyaLabel":"שביעי","book":"דברים","from":"34:1","to":"34:12"},{"aliya":"8","aliyaLabel":"שמיני","book":"בראשית","from":"1:1","to":"2:3"},{"aliya":"M","aliyaLabel":"מפטיר","book":"במדבר","from":"29:35","to":"30:1"}]
   },
   {
     id: "tr:Simchat Torah",
@@ -304,13 +318,6 @@ const TORAH_READINGS_LIST = [
     name: "שמחת תורה",
     land: "diaspora",
     aliyot: [{"aliya":"1","aliyaLabel":"ראשון","book":"דברים","from":"33:1","to":"33:7"},{"aliya":"2","aliyaLabel":"שני","book":"דברים","from":"33:8","to":"33:12"},{"aliya":"3","aliyaLabel":"שלישי","book":"דברים","from":"33:13","to":"33:17"},{"aliya":"4","aliyaLabel":"רביעי","book":"דברים","from":"33:18","to":"33:21"},{"aliya":"5","aliyaLabel":"חמישי","book":"דברים","from":"33:22","to":"33:26"},{"aliya":"6","aliyaLabel":"ששי","book":"דברים","from":"33:27","to":"34:12"},{"aliya":"7","aliyaLabel":"שביעי","book":"בראשית","from":"1:1","to":"2:3"},{"aliya":"M","aliyaLabel":"מפטיר","book":"במדבר","from":"29:35","to":"30:1"}]
-  },
-  {
-    id: "tr:Simchat Torah (on Shabbat)",
-    category: "sukkot",
-    name: "שמחת תורה (שבת)",
-    land: "diaspora",
-    aliyot: [{"aliya":"1","aliyaLabel":"ראשון","book":"דברים","from":"33:1","to":"33:7"},{"aliya":"2","aliyaLabel":"שני","book":"דברים","from":"33:8","to":"33:12"},{"aliya":"3","aliyaLabel":"שלישי","book":"דברים","from":"33:13","to":"33:17"},{"aliya":"4","aliyaLabel":"רביעי","book":"דברים","from":"33:18","to":"33:21"},{"aliya":"5","aliyaLabel":"חמישי","book":"דברים","from":"33:22","to":"33:26"},{"aliya":"6","aliyaLabel":"ששי","book":"דברים","from":"33:27","to":"33:29"},{"aliya":"7","aliyaLabel":"שביעי","book":"דברים","from":"34:1","to":"34:12"},{"aliya":"8","aliyaLabel":"שמיני","book":"בראשית","from":"1:1","to":"2:3"},{"aliya":"M","aliyaLabel":"מפטיר","book":"במדבר","from":"29:35","to":"30:1"}]
   },
   {
     id: "tr:Shabbat Rosh Chodesh Chanukah",
