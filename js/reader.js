@@ -104,6 +104,12 @@ function buildMarkerContent(lineObj, prev) {
         aliyaSpan.textContent = lineObj.aliyaName;
         wrapper.appendChild(aliyaSpan);
     }
+    if (lineObj.combinedAliyaName) {
+        const combinedSpan = document.createElement('span');
+        combinedSpan.className = 'marker-aliya marker-aliya-combined';
+        combinedSpan.textContent = lineObj.combinedAliyaName + ' מחובר';
+        wrapper.appendChild(combinedSpan);
+    }
 
     const isReallyNewChapter = curCh != null && curCh !== prev.ch;
 

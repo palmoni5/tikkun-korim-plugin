@@ -131,7 +131,19 @@
         </div>
         <div class="nav-pagination">
             <button id="btn-prev-col" class="md-button md-button--outlined">עמוד קודם</button>
-            <span id="column-indicator">טוען...</span>
+            <div class="popover-anchor" id="page-indicator-anchor">
+                <button class="page-indicator-btn" id="btn-page-indicator" title="לחץ לדילוג לעמוד ספציפי">
+                    <span id="column-indicator">טוען...</span>
+                </button>
+                <div class="popover" id="page-jump-popover">
+                    <div style="font-weight:700; margin-bottom:0.75em; color:var(--color-primary)">דילוג לעמוד</div>
+                    <div style="display:flex; gap:0.5em; align-items:center">
+                        <input type="number" id="page-jump-input" min="1" value="1" class="md-input-sm">
+                        <button id="btn-page-jump" class="md-button md-button--filled">עבור</button>
+                    </div>
+                    <div id="page-jump-hint" style="font-size:0.78em; margin-top:0.5em; color:var(--color-on-surface); opacity:0.7"></div>
+                </div>
+            </div>
             <button id="btn-next-col" class="md-button md-button--filled">עמוד הבא</button>
             <!-- החלפה מהירה לטור השני (מוצג רק כשטור אחד מוסתר) -->
             <button id="btn-swap-col" class="md-button md-button--outlined" style="display:none;" onclick="toggleSecondColumn()">הצג טור שני</button>
@@ -150,9 +162,18 @@
     <!-- כאן נכנסים הטורים -->
     <main id="reader-container" class="reader-wrapper"></main>
     
-    <!-- חלון הגדרות נשלף -->
-    <dialog id="settings-dialog" class="md-dialog">
-        <h2 class="md-dialog__title">הגדרות</h2>
+    <!-- שכבת רקע להגדרות -->
+    <div class="overlay-scrim" id="settings-scrim"></div>
+    <!-- פאנל הגדרות נשלף -->
+    <div class="overlay-panel" id="settings-panel">
+        <div class="overlay-panel__header">
+            <h2 class="overlay-panel__title">הגדרות</h2>
+            <button id="btn-close-settings" class="md-icon-button" aria-label="סגור">
+                <svg viewBox="0 0 24 24" width="22" height="22">
+                    <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+            </button>
+        </div>
 
         <!-- טאבים -->
         <div class="settings-tabs">
@@ -160,13 +181,13 @@
             <button type="button" class="settings-tab" data-tab="content">תוכן ומנהגים</button>
         </div>
 
-        <div class="md-dialog__content">
+        <div class="overlay-panel__content">
             <!-- === טאב תצוגה === -->
             <div class="settings-tab-panel" data-panel="display">
                 <div class="setting-group">
                     <label>גופן סת"ם:</label>
                     <select id="setting-stam-font" class="md-select">
-                        <optgroup label="גופני סת"ם">
+                        <optgroup label="גופני סת&quot;ם">
                             <option value="Klasi">קלאסי</option>
                             <option value="Ashkenazi">אשכנזי (בית יוסף)</option>
                             <option value="Sefardi">ספרדי (וועליש)</option>
@@ -205,7 +226,7 @@
                 </div>
                 <div class="setting-group">
                     <label>מרווח בין שורות (<span id="line-spacing-val">1.3</span>):</label>
-                    <input type="range" id="setting-line-spacing" class="md-slider" min="1.0" max="2.4" step="0.1" value="1.3">
+                    <input type="range" id="setting-line-spacing" class="md-slider" min="0.5" max="2.4" step="0.1" value="1.3">
                 </div>
                 <div class="setting-group">
                     <label>זום תצוגה (<span id="zoom-val">100</span>%):</label>
@@ -284,10 +305,7 @@
                 </div>
             </div>
         </div>
-        <div class="md-dialog__actions">
-            <button id="btn-close-settings" class="md-button md-button--text">סגור</button>
-        </div>
-    </dialog>
+    </div>
     
     <script src="js/torah_layouts.js"></script>
     <script src="js/special_layouts.js"></script>

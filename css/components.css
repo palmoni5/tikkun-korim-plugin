@@ -127,34 +127,36 @@
 
 .md-switch__track {
     display: inline-block;
-    width: 3.25em;
-    height: 2em;
+    flex-shrink: 0;
+    width: 48px;
+    height: 28px;
     background-color: var(--color-surface-container-highest);
     border-radius: var(--radius-pill);
     position: relative;
     cursor: pointer;
-    transition: background-color 0.2s;
-    border: 2px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+    border: 2px solid var(--color-outline);
 }
 
+/* הבלוק הפנימי של ה-track: 44×24px (אחרי הורדת border 2px מכל צד) */
 .md-switch__thumb {
     position: absolute;
-    top: 0.25em;
-    left: 0.25em;
-    right: 0.25em;
-    width: 1.5em;
-    height: 1.5em;
-    background-color: var(--color-on-surface);
+    top: 2px;
+    right: 2px;   /* RTL: מצב כבוי = צד ימין הפיזי */
+    width: 20px;
+    height: 20px;
+    background-color: var(--color-outline);
     border-radius: 50%;
     transition: transform 0.2s, background-color 0.2s;
 }
 
 .md-switch input:checked + .md-switch__track {
     background-color: var(--color-primary);
+    border-color: var(--color-primary);
 }
 .md-switch input:checked + .md-switch__track .md-switch__thumb {
     background-color: var(--color-on-primary);
-    transform: translateX(-1.25em);
+    transform: translateX(-20px); /* 44 - 2 - 20 - 2 = 20px: מהימין לשמאל פיזית */
 }
 
 /* Slider */
@@ -205,4 +207,133 @@
 }
 .settings-disclaimer strong {
     color: var(--color-primary);
+}
+
+/* ── Overlay Panel (הגדרות) ─────────────────────────────────────── */
+.overlay-scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--shadow-overlay);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 200;
+}
+.overlay-scrim.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.overlay-panel {
+    position: fixed;
+    top: 10px;
+    bottom: 12px;
+    left: 10px;
+    width: 340px;
+    max-width: calc(100% - 20px);
+    background: color-mix(in srgb, var(--color-secondary) 15%, var(--color-surface));
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 24px var(--shadow-dialog);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 201;
+    opacity: 0;
+    transform: translateX(-30px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.overlay-panel.open {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+.overlay-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1em 1.25em 0.5em;
+    flex-shrink: 0;
+}
+.overlay-panel__title {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin: 0;
+}
+.overlay-panel .settings-tabs {
+    padding: 0 1.25em;
+    flex-shrink: 0;
+}
+.overlay-panel__content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75em 1.25em 1.25em;
+}
+
+/* ── Popover ממוקם (דילוג לעמוד) ────────────────────────────────── */
+.popover-anchor {
+    position: relative;
+    display: inline-block;
+}
+.popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 190px;
+    background: var(--color-surface-container-highest);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 20px var(--shadow-dialog);
+    border: 1px solid var(--color-outline);
+    padding: 14px;
+    z-index: 300;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    pointer-events: none;
+    transform-origin: top left;
+    transition: opacity 0.15s, transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.popover.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+/* כפתור מחוון העמוד (לחיץ) */
+.page-indicator-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 0.3em 0.6em;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.9em;
+    color: var(--color-on-surface);
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.page-indicator-btn:hover {
+    background: var(--color-primary-subtle);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* שדה מספר קטן (לדילוג לעמוד) */
+.md-input-sm {
+    width: 4.5em;
+    padding: 0.4em 0.5em;
+    border: 1.5px solid var(--color-outline);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: 0.9em;
+    color: var(--color-on-surface);
+    background: var(--color-surface);
+    outline: none;
+    text-align: center;
+    direction: ltr;
+    box-sizing: border-box;
+}
+.md-input-sm:focus {
+    border-color: var(--color-primary);
 }

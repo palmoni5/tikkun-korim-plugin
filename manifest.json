@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "com.tikkun.koraim",
   "name": "תיקון קוראים",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "תיקון קוראים אינטראקטיבי עם תמיכה מלאה בהלכות סת\"ם.",
   "author": "פלמנמוני",
   "stability": "stable",

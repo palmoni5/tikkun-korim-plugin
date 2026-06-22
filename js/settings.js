@@ -1,29 +1,32 @@
 // js/settings.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    const dialog = document.getElementById('settings-dialog');
+    const settingsScrim = document.getElementById('settings-scrim');
+    const settingsPanel = document.getElementById('settings-panel');
     const btnSettings = document.getElementById('btn-settings');
     const btnClose = document.getElementById('btn-close-settings');
 
-    // פתיחה/סגירה של הדיאלוג (toggle - לחיצה חוזרת סוגרת)
-    btnSettings.addEventListener('click', () => {
-        if (dialog.open) {
-            dialog.close();
-        } else {
-            syncUIToState();
-            dialog.showModal();
-        }
-    });
-    btnClose.addEventListener('click', () => dialog.close());
+    function openSettings() {
+        syncUIToState();
+        settingsScrim.classList.add('open');
+        settingsPanel.classList.add('open');
+    }
 
-    // סגירה בלחיצה מחוץ לדיאלוג (על ה-backdrop)
-    // backdrop בלחיצה מדווח על dialog עצמו כ-target; כל לחיצה על תוכן פנימי
-    // תהיה ב-target צאצא של dialog.
-    dialog.addEventListener('click', (e) => {
-        if (e.target === dialog) {
-            dialog.close();
+    function closeSettings() {
+        settingsScrim.classList.remove('open');
+        settingsPanel.classList.remove('open');
+    }
+
+    // פתיחה/סגירה של הפאנל (toggle - לחיצה חוזרת סוגרת)
+    btnSettings.addEventListener('click', () => {
+        if (settingsPanel.classList.contains('open')) {
+            closeSettings();
+        } else {
+            openSettings();
         }
     });
+    btnClose.addEventListener('click', closeSettings);
+    settingsScrim.addEventListener('click', closeSettings);
 
     // מיפוי האלמנטים בדיאלוג
     const inputs = {

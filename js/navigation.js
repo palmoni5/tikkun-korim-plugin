@@ -33,6 +33,9 @@ let currentNavState = {
 
 // Cache - כל חומש נטען פעם אחת
 const TorahBookCache = {};
+// נתונים שאינם תלויים בשיטת הפיסוק (tokens, allLines) — נשמרים בנפרד
+// כך שהחלפת שיטה לא מחייבת עיבוד מחדש של הטקסט
+let cachedTorahBase = null; // { tokens, allLines, bookStartTokenIdx }
 // כל הטקסט המעובד: { tokens, lines, pages, parashaPositions }
 let processedAll = null;
 let paginatedColumns = [];
@@ -669,50 +672,62 @@ async function loadAndProcessAll(methodId) {
 
     const t0 = performance.now();
 
-    const allRaw = await Promise.all(
-        BOOKS_ORDER.map(bookId => fetchFullBook(bookId).then(text => {
-            console.log(`[tikkun] loaded ${bookId}: ${text.length} chars`);
-            return text;
-        }))
-    );
-    if (myRequestId !== fetchRequestId) return null;
+    let tokens, allLines, bookStartTokenIdx;
 
-    await yieldToUi();
+    if (cachedTorahBase) {
+        // טוקנים ושורות כבר חושבו — רק גדרי העמוד ישתנו
+        ({ tokens, allLines, bookStartTokenIdx } = cachedTorahBase);
+    } else {
+        const allRaw = await Promise.all(
+            BOOKS_ORDER.map(bookId => fetchFullBook(bookId).then(text => {
+                console.log(`[tikkun] loaded ${bookId}: ${text.length} chars`);
+                return text;
+            }))
+        );
+        if (myRequestId !== fetchRequestId) return null;
 
-    // מעבד כל חומש בנפרד כדי לסמן בו קטעים מיוחדים (שירות) לפי שם הספר.
-    // yield אחרי כל ספר כדי לא לחסום את ה-UI.
-    const tokens = [];
-    for (let i = 0; i < BOOKS_ORDER.length; i++) {
-        const bookId = BOOKS_ORDER[i];
-        const bookName = TORAH_STRUCTURE[bookId].name;
-        const cleaned = cleanRawText(allRaw[i]);
-        let bookTokens = window.PageLayoutEngine.tokenizeText(cleaned);
-        if (window.SpecialLayouts) {
-            bookTokens = window.SpecialLayouts.markSpecialSections(bookTokens, bookName);
+        await yieldToUi();
+
+        // מעבד כל חומש בנפרד כדי לסמן בו קטעים מיוחדים (שירות) לפי שם הספר.
+        // yield אחרי כל ספר כדי לא לחסום את ה-UI.
+        tokens = [];
+        for (let i = 0; i < BOOKS_ORDER.length; i++) {
+            const bookId = BOOKS_ORDER[i];
+            const bookName = TORAH_STRUCTURE[bookId].name;
+            const cleaned = cleanRawText(allRaw[i]);
+            let bookTokens = window.PageLayoutEngine.tokenizeText(cleaned);
+            if (window.SpecialLayouts) {
+                bookTokens = window.SpecialLayouts.markSpecialSections(bookTokens, bookName);
+            }
+            if (i > 0) tokens.push({ type: 'book_break' });
+            tokens.push(...bookTokens);
+            await yieldToUi();
+            if (myRequestId !== fetchRequestId) return null;
         }
-        if (i > 0) tokens.push({ type: 'book_break' });
-        tokens.push(...bookTokens);
+
+        bookStartTokenIdx = computeBookStartIndices(tokens);
+        console.log(`[tikkun] book starts:`, bookStartTokenIdx);
+
+        await yieldToUi();
+        if (myRequestId !== fetchRequestId) return null;
+
+        allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
+        console.log(`[tikkun] lines: ${allLines.length}`);
+
+        await yieldToUi();
+        if (myRequestId !== fetchRequestId) return null;
+
+        annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx);
+        annotateCombinedAliyotOnLines(tokens, allLines, bookStartTokenIdx);
+
+        cachedTorahBase = { tokens, allLines, bookStartTokenIdx };
+
         await yieldToUi();
         if (myRequestId !== fetchRequestId) return null;
     }
 
-    const bookStartTokenIdx = computeBookStartIndices(tokens);
-    console.log(`[tikkun] book starts:`, bookStartTokenIdx);
-
     const isSinglePage = methodId === 'single_page';
     const layout = isSinglePage ? null : window.TORAH_LAYOUTS[methodId];
-    const maxLines = isSinglePage ? Infinity : layout.linesPerPage;
-
-    await yieldToUi();
-    if (myRequestId !== fetchRequestId) return null;
-
-    const allLines = window.PageLayoutEngine.paginateAllTokens(tokens, 36);
-    console.log(`[tikkun] lines: ${allLines.length}, pages: ~${isSinglePage ? 1 : Math.ceil(allLines.length / maxLines)}`);
-
-    await yieldToUi();
-    if (myRequestId !== fetchRequestId) return null;
-
-    annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx);
 
     await yieldToUi();
     if (myRequestId !== fetchRequestId) return null;
@@ -725,19 +740,13 @@ async function loadAndProcessAll(methodId) {
             lines: allLines
         });
     } else {
-        for (let i = 0; i < allLines.length; i += maxLines) {
-            pages.push({
-                startLineIdx: i,
-                endLineIdx: Math.min(i + maxLines, allLines.length),
-                lines: allLines.slice(i, i + maxLines)
-            });
-        }
+        pages.push(...buildOfficialPages(tokens, allLines, layout.pages));
     }
 
     processedAll = { tokens, allLines, pages, bookStartTokenIdx };
     paginatedColumns = pages.map(p => p.lines);
 
-    console.log(`[tikkun] done in ${Math.round((performance.now() - t0) / 1000)}s`);
+    console.log(`[tikkun] pages: ${pages.length}, done in ${Math.round((performance.now() - t0) / 1000)}s`);
     return processedAll;
 }
 
@@ -753,21 +762,121 @@ const ALIYA_DISPLAY_NAMES = {
     'מפטיר': 'מפטיר'
 };
 
+// מיפוי: שם פרשה בודדת → הפרשה המחוברת שלה + שם הפרשה הראשונה בזוג (לחיפוש תחילה)
+const COMBINED_PARASHA_MAP = {
+    'ויקהל':    { combined: 'ויקהל-פקודי',     first: 'ויקהל' },
+    'פקודי':    { combined: 'ויקהל-פקודי',     first: 'ויקהל' },
+    'תזריע':    { combined: 'תזריע-מצורע',     first: 'תזריע' },
+    'מצורע':    { combined: 'תזריע-מצורע',     first: 'תזריע' },
+    'אחרי מות': { combined: 'אחרי מות-קדושים', first: 'אחרי מות' },
+    'קדושים':   { combined: 'אחרי מות-קדושים', first: 'אחרי מות' },
+    'בהר':      { combined: 'בהר-בחוקותי',     first: 'בהר' },
+    'בחוקותי':  { combined: 'בהר-בחוקותי',     first: 'בהר' },
+    'בחקתי':    { combined: 'בהר-בחוקותי',     first: 'בהר' },
+    'חקת':      { combined: 'חקת-בלק',         first: 'חקת' },
+    'בלק':      { combined: 'חקת-בלק',         first: 'חקת' },
+    'מטות':     { combined: 'מטות-מסעי',       first: 'מטות' },
+    'מסעי':     { combined: 'מטות-מסעי',       first: 'מטות' },
+    'נצבים':    { combined: 'נצבים-וילך',      first: 'נצבים' },
+    'וילך':     { combined: 'נצבים-וילך',      first: 'נצבים' },
+};
+
 // עוברים על כל הפרשיות בתורה, ומוצאים את השורה שבה מתחילה כל פרשה ועליה.
 // מסמנים `aliyaName` לתחילת עליה ו-`parashaName` לתחילת פרשה.
-function annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
-    // עזר - מציאת אינדקס השורה שמכילה טוקן מסוים
-    const findLineForToken = (tokenIdx) => {
-        for (let lineIdx = 0; lineIdx < allLines.length; lineIdx++) {
-            const thisStart = allLines[lineIdx].startTokenIdx;
-            const nextStart = (lineIdx + 1 < allLines.length)
-                ? allLines[lineIdx + 1].startTokenIdx
-                : Infinity;
-            if (thisStart >= 0 && tokenIdx >= thisStart && tokenIdx < nextStart) {
-                return lineIdx;
+// בונה מערך עמודים לפי גבולות firstWord של השיטה הנבחרת.
+// מניב בדיוק pageDefs.length עמודים (245 לרמ"ה, 248 לרמ"ח, 226 לתימני).
+// עמודים עם firstWord=null מקבלים גבול מאינטרפולציה בין הגבולות הידועים.
+function buildOfficialPages(tokens, allLines, pageDefs) {
+    const MIN_TOKENS = 20;
+
+    // שלב 1: מצא אינדקס טוקן לתחילת כל עמוד (לפי firstWord)
+    const tokenBoundaries = new Array(pageDefs.length).fill(-1);
+    tokenBoundaries[0] = 0;
+
+    let nextTarget = 1;
+    let tokensSince = 0;
+    while (nextTarget < pageDefs.length && !pageDefs[nextTarget].firstWord) nextTarget++;
+
+    for (let i = 0; i < tokens.length && nextTarget < pageDefs.length; i++) {
+        const tok = tokens[i];
+        if (tok.type !== 'word') continue;
+        tokensSince++;
+        if (tokensSince >= MIN_TOKENS) {
+            const clean = tok.value.replace(/[֑-ׇ]/g, '');
+            if (clean === pageDefs[nextTarget].firstWord) {
+                tokenBoundaries[nextTarget] = i;
+                tokensSince = 0;
+                nextTarget++;
+                while (nextTarget < pageDefs.length && !pageDefs[nextTarget].firstWord) nextTarget++;
             }
         }
-        return -1;
+    }
+
+    // שלב 2: מלא גבולות חסרים (firstWord=null או לא נמצא) באינטרפולציה
+    for (let pi = 1; pi < pageDefs.length; pi++) {
+        if (tokenBoundaries[pi] !== -1) continue;
+        let lo = pi - 1;
+        while (lo > 0 && tokenBoundaries[lo] === -1) lo--;
+        let hi = pi + 1;
+        while (hi < pageDefs.length && tokenBoundaries[hi] === -1) hi++;
+        const hiVal = hi < pageDefs.length ? tokenBoundaries[hi] : tokens.length;
+        const nullCount = hi - lo - 1;
+        for (let k = 1; k <= nullCount; k++) {
+            tokenBoundaries[lo + k] = Math.round(
+                tokenBoundaries[lo] + k * (hiVal - tokenBoundaries[lo]) / (nullCount + 1)
+            );
+        }
+    }
+
+    // שלב 3: מיפוי גבולות טוקן → גבולות שורה (binary search)
+    const validLines = [];
+    for (let j = 0; j < allLines.length; j++) {
+        if (allLines[j].startTokenIdx >= 0) validLines.push(j);
+    }
+
+    const findLineForToken = (tokenIdx) => {
+        let lo = 0, hi = validLines.length - 1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (allLines[validLines[mid]].startTokenIdx <= tokenIdx) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return hi >= 0 ? validLines[hi] : 0;
+    };
+
+    const lineStarts = tokenBoundaries.map(tb => tb <= 0 ? 0 : findLineForToken(tb));
+
+    // שלב 4: בניית מערך העמודים
+    const pages = [];
+    for (let pi = 0; pi < pageDefs.length; pi++) {
+        const startLineIdx = lineStarts[pi];
+        const endLineIdx = pi + 1 < pageDefs.length ? lineStarts[pi + 1] : allLines.length;
+        pages.push({ startLineIdx, endLineIdx, lines: allLines.slice(startLineIdx, endLineIdx) });
+    }
+
+    const matched = tokenBoundaries.filter((b, i) => i > 0 && pageDefs[i].firstWord && b !== -1).length;
+    const nonNull = pageDefs.filter((p, i) => i > 0 && p.firstWord).length;
+    console.log(`[tikkun] buildOfficialPages: ${pages.length} pages, ${matched}/${nonNull} firstWords matched`);
+    return pages;
+}
+
+function annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
+    // בנייה חד-פעמית של מבנה חיפוש: רק שורות עם startTokenIdx תקין, ממוינות
+    // מאפשר binary search במקום סריקה ליניארית לכל עליה (O(log L) במקום O(L))
+    const validLines = [];
+    for (let i = 0; i < allLines.length; i++) {
+        if (allLines[i].startTokenIdx >= 0) validLines.push(i);
+    }
+    // validLines מסודר בסדר עולה כי paginateAllTokens מייצרת שורות לפי סדר הטוקנים
+
+    const findLineForToken = (tokenIdx) => {
+        let lo = 0, hi = validLines.length - 1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (allLines[validLines[mid]].startTokenIdx <= tokenIdx) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return hi >= 0 ? validLines[hi] : -1;
     };
 
     for (const bookId of BOOKS_ORDER) {
@@ -804,6 +913,60 @@ function annotateAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
                 aliyaSearchFrom = aliyaTokenIdx + 1;
             }
             searchFrom = parashaStart + 1;
+        }
+    }
+}
+
+// סורק את הטוקנים ומסמן על כל שורה את עליית הקריאה המחוברת (combinedAliyaName),
+// בנוסף לעליה הרגילה שכבר סומנה. כך ניתן להציג בטור הסמנים שני מספרי עליה —
+// אחד לקריאה רגילה ואחד מתחתיו לשנה שבה הפרשיות מחוברות.
+function annotateCombinedAliyotOnLines(tokens, allLines, bookStartTokenIdx) {
+    const validLines = [];
+    for (let i = 0; i < allLines.length; i++) {
+        if (allLines[i].startTokenIdx >= 0) validLines.push(i);
+    }
+    const findLineForToken = (tokenIdx) => {
+        let lo = 0, hi = validLines.length - 1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (allLines[validLines[mid]].startTokenIdx <= tokenIdx) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return hi >= 0 ? validLines[hi] : -1;
+    };
+
+    const done = new Set();
+
+    for (const bookId of BOOKS_ORDER) {
+        const bookName = TORAH_STRUCTURE[bookId].name;
+        const bookStart = bookStartTokenIdx[bookId] || 0;
+
+        for (const parashaName of TORAH_STRUCTURE[bookId].parashot) {
+            const normalized = normalizeParashaName(parashaName);
+            const info = COMBINED_PARASHA_MAP[parashaName] || COMBINED_PARASHA_MAP[normalized];
+            if (!info || done.has(info.combined)) continue;
+            done.add(info.combined);
+
+            const firstNorm = normalizeParashaName(info.first);
+            const firstStart = window.findParashaStart
+                ? window.findParashaStart(tokens, firstNorm, bookStart)
+                : -1;
+            if (firstStart < 0) continue;
+
+            const aliyot = window.ALIYOT_INDEX?.[bookName]?.[info.combined] || [];
+            let searchFrom = firstStart;
+            for (const a of aliyot) {
+                const tokenIdx = findWordSequence(tokens, a.words, searchFrom);
+                if (tokenIdx < 0) continue;
+                const lineIdx = findLineForToken(tokenIdx);
+                if (lineIdx >= 0) {
+                    const label = ALIYA_DISPLAY_NAMES[a.aliya] || a.aliya;
+                    if (!allLines[lineIdx].combinedAliyaName && label !== allLines[lineIdx].aliyaName) {
+                        allLines[lineIdx].combinedAliyaName = label;
+                    }
+                }
+                searchFrom = tokenIdx + 1;
+            }
         }
     }
 }
@@ -1633,3 +1796,51 @@ function computeContinuousSegments(aliyot) {
     segs.push(cur);
     return segs;
 }
+
+// === דילוג לעמוד ספציפי (popover) ===
+(function () {
+    const btn = document.getElementById('btn-page-indicator');
+    const popover = document.getElementById('page-jump-popover');
+    const input = document.getElementById('page-jump-input');
+    const hint = document.getElementById('page-jump-hint');
+    const goBtn = document.getElementById('btn-page-jump');
+    if (!btn || !popover) return;
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const isOpen = popover.classList.contains('open');
+        if (!isOpen) {
+            const total = paginatedColumns.length;
+            input.max = total || 1;
+            input.value = currentNavState.currentColumnIndex + 1;
+            hint.textContent = total > 0 ? 'מתוך ' + total + ' עמודים' : '';
+        }
+        popover.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function () {
+        popover.classList.remove('open');
+    });
+
+    popover.addEventListener('click', function (e) {
+        e.stopPropagation();
+    });
+
+    function jumpToPage() {
+        const total = paginatedColumns.length;
+        if (!total) return;
+        const page = parseInt(input.value, 10);
+        const idx = Math.max(0, Math.min(page - 1, total - 1));
+        popover.classList.remove('open');
+        if (idx === currentNavState.currentColumnIndex) return;
+        currentNavState.currentColumnIndex = idx;
+        renderCurrentColumn(0);
+        saveNavState();
+        setTimeout(syncSelectsToScrollPosition, 0);
+    }
+
+    goBtn.addEventListener('click', jumpToPage);
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') jumpToPage();
+    });
+})();
